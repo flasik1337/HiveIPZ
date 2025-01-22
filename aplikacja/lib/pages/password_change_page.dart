@@ -1,26 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../database/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PasswordChangePage extends StatefulWidget {
   const PasswordChangePage({Key? key}) : super(key: key);
 
   @override
-  State<PasswordChangePage> createState() => _PasswordChangePageState();
-  }
+  State<StatefulWidget> createState() => _PasswordChangePageState();
+}
 
 class _PasswordChangePageState extends State<PasswordChangePage> {
-  final TextEditingController _emailController = TextEditingController();
+  Map<String, dynamic>? userData;
+  int? userId;
+
+  get http => null;
+
+  final TextEditingController _oldPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  String oldPassword = "";
+
   bool _showPassword = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+    fetchCurrentPassword();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception("Brak tokena w SharedPreferences");
+      }
+
+      final data = await DatabaseHelper.getUserByToken(token);
+      setState(() {
+        userData = data;
+        userId = data?['id'];
+      });
+    } catch (e) {
+      print('Błąd podczas pobierania danych użytkownika: $e');
+    }
+  }
+
+  void fetchCurrentPassword() async {
+    final password = await DatabaseHelper.fetchPassword(userId!, userData!['token']);
+    setState(() {
+      oldPassword = password!;
+    });
+  }
+
   Future<void> _changePassword() async {
-    final email = _emailController.text.trim();
+    final currentPassword = _oldPasswordController.text.trim();
     final newPassword = _newPasswordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (email.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Wypełnij wszystkie pola')),
       );
@@ -29,55 +70,51 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
 
     // Walidacja nowego hasła
     final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
-      if (!passwordRegExp.hasMatch(newPassword)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
-            ),
+    if (!passwordRegExp.hasMatch(newPassword)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
           ),
-        );
-        return;
-      }
+        ),
+      );
+      return;
+    }
 
-      if (newPassword != confirmPassword) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Hasła się nie zgadzają')),
-        );
-        return;
-      }
+    if (newPassword != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hasła się nie zgadzają')),
+      );
+      return;
+    }
 
-      try {
-        final response = await http.post(
-          Uri.parse('http://212.127.78.92:5000/change_password'), // Endpoint na backendzie
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({'email': email, 'new_password': newPassword}),
-        );
+    if (newPassword == oldPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nowe hasło jest takie samo jak stare.')),
+      );
+      return;
+    }
 
-        if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Hasło zostało zmienione')),
-          );
-          Navigator.pop(context);
-        } else if (response.statusCode == 404) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Użytkownik o podanym emailu nie istnieje')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Błąd serwera: ${response.statusCode}')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd połączenia: $e')),
+    try {
+      await DatabaseHelper.changePasswordWithOld(oldPassword, newPassword);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hasła zostało zmienione pomyślnie')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd zmiany hasła: $e')),
       );
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
+    // if (userData == null) {
+    //   return const Scaffold(
+    //     body: Center(child: CircularProgressIndicator()),
+    //   );
+    // }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Zmień hasło'),
@@ -88,9 +125,10 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
-              controller: _emailController,
+              controller: _oldPasswordController,
+              obscureText: !_showPassword,
               decoration: const InputDecoration(
-                labelText: 'Email',
+                labelText: 'Aktualne hasło',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -113,18 +151,18 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
               ),
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _showPassword,
-                  onChanged: (value) {
-                    setState(() {
-                      _showPassword = value!;
-                    });
-                  }
-                ),
-                const Text("Pokaż hasło")
-              ]
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Checkbox(
+                      value: _showPassword,
+                      onChanged: (value) {
+                        setState(() {
+                          _showPassword = value!;
+                        });
+                      }
+                  ),
+                  const Text("Pokaż hasło")
+                ]
             ),
             const SizedBox(height: 24),
             ElevatedButton(

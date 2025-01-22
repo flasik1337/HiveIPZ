@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
+import '../pages/password_change_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -258,7 +259,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: null,
+            onPressed: () {
+              if (userId != null && userData != null) {
+                final token = userData!['token'];
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) =>
+                    PasswordChangePage(),
+                  ),
+                );
+              }
+            },
             child: const Text('Zmień hasło')),
           Divider(),
           if (_showPasswordField) ...[

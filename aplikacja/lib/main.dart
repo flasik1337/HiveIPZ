@@ -6,7 +6,7 @@ import 'pages/home_page.dart';
 import 'pages/registration.dart';
 import 'pages/profile_page.dart';
 import 'pages/settings_page.dart';
-import 'pages/password_change_page.dart';
+import 'pages/password_reset_page.dart';
 import 'models/event.dart';
 
 // Przykładowe wydarzenia testowe
@@ -92,7 +92,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => HomePage(events: testEvents),
         '/account': (context) => ProfilePage(),
         '/settings': (context) => SettingsPage(),
-        '/change_password': (context) => PasswordChangePage(),
+        '/change_password': (context) => PasswordResetPage(),
       },
     );
   }
