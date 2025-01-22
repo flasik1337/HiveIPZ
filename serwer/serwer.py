@@ -373,7 +373,7 @@ def update_event(event_id):
         cursor = mydb.cursor()
         sql = """
         UPDATE events
-        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s
+        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s, user_id = %s
         WHERE id = %s
         """
         val = (
@@ -385,6 +385,7 @@ def update_event(event_id):
             data['max_participants'],
             data['registered_participants'],
             data['image'],
+            data['user_id'],
             event_id
         )
         cursor.execute(sql, val)

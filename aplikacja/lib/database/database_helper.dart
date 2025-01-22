@@ -143,6 +143,7 @@ class DatabaseHelper {
 
   // Dodawanie wydarzeń
   static Future<void> addEvent(Map<String, dynamic> eventData) async {
+    print("DEBUG: userId w dbhelper: ${eventData['user_id']}");
     final url = Uri.parse('$link/events');
     final response = await http.post(
       url,

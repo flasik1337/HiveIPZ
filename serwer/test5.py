@@ -344,8 +344,8 @@ def add_event():
         data = request.get_json()
         cursor = mydb.cursor()
         sql = """
-        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image, user_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         val = (
             data['id'],
@@ -357,6 +357,7 @@ def add_event():
             data['max_participants'],
             data['registered_participants'],
             data['image'],
+            data['user_id']
         )
         cursor.execute(sql, val)
         mydb.commit()

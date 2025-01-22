@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/event.dart';
 import '../widgets/event_type_grid.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 // Dodaj import dla kodowania Base64
 // Import dla obsługi plików
 
@@ -27,6 +28,31 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final TextEditingController _maxParticipantsController = TextEditingController();
   String? _imagePath = 'assets/placeholder.jpg';
   final ImagePicker _picker = ImagePicker();
+  int? userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception("Brak tokena w SharedPreferences");
+      }
+
+      final data = await DatabaseHelper.getUserByToken(token);
+      setState(() {
+        userId = data?['id'];
+      });
+    } catch (e) {
+      print('Błąd podczas pobierania danych użytkownika: $e');
+    }
+  }
 
   // TODO zastąp to zapisem na dysk/do bazy danych
   // funkcja zapisująca zdjęcie wydarzenia w telefonie
@@ -71,10 +97,12 @@ class _CreateEventPageState extends State<CreateEventPage> {
               : int.parse(_maxParticipantsController.text),
           'registered_participants': 1,
           'image': _imagePath ?? 'assets/placeholder.jpg',
+          'user_id': userId,
         };
 
         // zapisujemy dane do bazy
         await DatabaseHelper.addEvent(eventData);
+        await DatabaseHelper.joinEvent(eventData['id'] as String);
 
         // wyświetlamy komunikat o powodzeniu
         ScaffoldMessenger.of(context).showSnackBar(
