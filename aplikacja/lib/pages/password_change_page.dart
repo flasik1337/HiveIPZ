@@ -7,7 +7,7 @@ class PasswordChangePage extends StatefulWidget {
 
   @override
   State<PasswordChangePage> createState() => _PasswordChangePageState();
-}
+  }
 
 class _PasswordChangePageState extends State<PasswordChangePage> {
   final TextEditingController _emailController = TextEditingController();
@@ -25,52 +25,52 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
         const SnackBar(content: Text('Wypełnij wszystkie pola')),
       );
       return;
-  }
+    }
 
-  // Walidacja nowego hasła
-  final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
-    if (!passwordRegExp.hasMatch(newPassword)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
+    // Walidacja nowego hasła
+    final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
+      if (!passwordRegExp.hasMatch(newPassword)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
+            ),
           ),
-        ),
-      );
-      return;
-    }
-
-    if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hasła się nie zgadzają')),
-      );
-      return;
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://212.127.78.92:5000/change_password'), // Endpoint na backendzie
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'new_password': newPassword}),
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Hasło zostało zmienione')),
         );
-        Navigator.pop(context);
-      } else if (response.statusCode == 404) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Użytkownik o podanym emailu nie istnieje')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd serwera: ${response.statusCode}')),
-        );
+        return;
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Błąd połączenia: $e')),
+
+      if (newPassword != confirmPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Hasła się nie zgadzają')),
+        );
+        return;
+      }
+
+      try {
+        final response = await http.post(
+          Uri.parse('http://212.127.78.92:5000/change_password'), // Endpoint na backendzie
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': email, 'new_password': newPassword}),
+        );
+
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Hasło zostało zmienione')),
+          );
+          Navigator.pop(context);
+        } else if (response.statusCode == 404) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Użytkownik o podanym emailu nie istnieje')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Błąd serwera: ${response.statusCode}')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd połączenia: $e')),
       );
     }
   }
