@@ -1,6 +1,6 @@
 import smtplib
 from email.mime.text import MIMEText
-from flask import Flask, request, jsonify, send_from_directory, render_template
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
@@ -138,7 +138,7 @@ def verify_email():
         cursor.execute(update_sql, (user[0],))
         mydb.commit()
 
-        return render_template('verified.html'), 200
+        return jsonify({'message': 'E-mail został zweryfikowany pomyślnie'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
