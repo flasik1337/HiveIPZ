@@ -5,7 +5,7 @@ import 'package:mysql1/mysql1.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://212.127.78.92:5000';
+  static const String link = 'http://192.168.0.16:5000';
   // static const String host = 'localhost';
   // static const int port = 3306;
   // static const String user = 'root';
@@ -26,7 +26,7 @@ class DatabaseHelper {
       String name,
       String surname,
       int age,
-      String nickname,
+      String nickName,
       String email,
       String password,
       ) async {
@@ -38,7 +38,7 @@ class DatabaseHelper {
         'name': name,
         'surname': surname,
         'age': age,
-        'nickname': nickname,
+        'nickName': nickName,
         'email': email,
         'password': password,
       }),
@@ -53,12 +53,14 @@ class DatabaseHelper {
   }
 
   static Future<Map<String, dynamic>?> getUser(
-      String email, String password) async {
+      //String email, String password) async {
+        String nickName, String password) async {
     final url = Uri.parse('$link/login');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      //body: jsonEncode({'email': email, 'password': password}),
+        body: jsonEncode({'nickName': nickName, 'password': password}),
     );
 
     if (response.statusCode == 200) {

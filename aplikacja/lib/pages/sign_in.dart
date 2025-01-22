@@ -44,18 +44,18 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Future<void> _signIn() async {
-    final email = _loginController.text;
+    final nickName = _loginController.text;
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (nickName.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wprowadź email i hasło')),
+        const SnackBar(content: Text('Wprowadź login i hasło')),
       );
       return;
     }
 
     try {
-      final userData = await DatabaseHelper.getUser(email, password);
+      final userData = await DatabaseHelper.getUser(nickName, password);
 
       if (userData != null) {
         final token = userData['token'];
@@ -106,7 +106,7 @@ class _SignInPageState extends State<SignInPage> {
                 controller: _loginController,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  labelText: 'Email',
+                  labelText: 'login',
                 ),
               ),
             ),
