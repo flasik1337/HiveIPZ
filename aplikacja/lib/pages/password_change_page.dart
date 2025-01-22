@@ -19,7 +19,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
   final TextEditingController _oldPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  String oldPassword = "";
+  late String oldPassword;
 
   bool _showPassword = false;
 
@@ -27,7 +27,6 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
   void initState() {
     super.initState();
     _fetchUserData();
-    fetchCurrentPassword();
   }
 
   Future<void> _fetchUserData() async {
@@ -44,17 +43,28 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
         userData = data;
         userId = data?['id'];
       });
+
+      if (userId != null) {
+        fetchCurrentPassword(token);
+      }
     } catch (e) {
       print('Błąd podczas pobierania danych użytkownika: $e');
     }
   }
 
-  void fetchCurrentPassword() async {
-    final password = await DatabaseHelper.fetchPassword(userId!, userData!['token']);
-    setState(() {
-      oldPassword = password!;
-    });
+  void fetchCurrentPassword(String token) async {
+    try {
+      print("DEBUG: Pobieranie hasła dla userId: $userId z tokenem: ${userData!['token']}");
+      final password = await DatabaseHelper.fetchPassword(userId!, token);
+      print("DEBUG: Otrzymane hasło: $password");
+      setState(() {
+        oldPassword = password ?? '';
+      });
+    } catch (e) {
+      print("Błąd podczas pobierania obecnego hasła: $e");
+    }
   }
+
 
   Future<void> _changePassword() async {
     final currentPassword = _oldPasswordController.text.trim();
@@ -109,7 +119,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
 
   @override
   Widget build(BuildContext context) {
-    // if (userData == null) {
+    // if (userData == null || oldPassword.isEmpty) {
     //   return const Scaffold(
     //     body: Center(child: CircularProgressIndicator()),
     //   );
