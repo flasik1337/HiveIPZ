@@ -11,6 +11,7 @@ from datetime import datetime
 import base64
 import socket
 
+
 load_dotenv()
 
 hostname = socket.gethostname()
@@ -49,7 +50,7 @@ mydb = mysql.connector.connect(
     user= os.getenv("DB_USER"),
     password= os.getenv("DB_PASSWORD"),
     database= os.getenv("DB_NAME"),
-    auth_plugin="caching_sha2_password"
+    auth_plugin="mysql_native_password"
 )
 
 # mydb = mysql.connector.connect(
@@ -146,12 +147,12 @@ def verify_email():
 def login():
     try:
         data = request.get_json()
-        email = data['email']
+        nickName = data['nickName']
         password = data['password']
 
         cursor = mydb.cursor(dictionary=True)
-        sql = "SELECT * FROM users WHERE email = %s AND password = %s"
-        val = (email, password)
+        sql = "SELECT * FROM users WHERE nickName = %s AND password = %s"
+        val = (nickName, password)
         cursor.execute(sql, val)
         user = cursor.fetchone()
 
@@ -164,8 +165,8 @@ def login():
             if not token:
                 # Generowanie nowego tokenu, jeśli nie istnieje
                 token = secrets.token_urlsafe(32)
-                update_sql = "UPDATE users SET token = %s WHERE email = %s"
-                cursor.execute(update_sql, (token, email))
+                update_sql = "UPDATE users SET token = %s WHERE nickName = %s"
+                cursor.execute(update_sql, (token, nickName))
                 mydb.commit()
                 print(f"Generated new token for user: {token}")
             else:
@@ -173,7 +174,7 @@ def login():
 
             return jsonify({'message': 'Zalogowano pomyślnie', 'user': user, 'token': token}), 200
         else:
-            return jsonify({'message': 'Nieprawidłowy email lub hasło'}), 401
+            return jsonify({'message': 'Nieprawidłowy login lub hasło'}), 401
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)}), 500
