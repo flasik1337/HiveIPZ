@@ -21,6 +21,7 @@ class SignInPage extends StatefulWidget {
 class _SignInPageState extends State<SignInPage> {
   final TextEditingController _loginController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _showPassword = false;
 
   @override
   void initState() {
@@ -113,12 +114,26 @@ class _SignInPageState extends State<SignInPage> {
               padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 5.0),
               child: TextField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: !_showPassword,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: 'Hasło',
                 ),
               ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: _showPassword,
+                  onChanged: (value) {
+                    setState(() {
+                      _showPassword = value!;
+                    });
+                  }
+                ),
+                const Text("Pokaż hasło")
+              ]
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 5.0),

@@ -256,6 +256,10 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () =>
                 _showEditDialog('nickName', userData!['nickName'] ?? ''),
           ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: null,
+            child: const Text('Zmień hasło')),
           Divider(),
           if (_showPasswordField) ...[
             TextField(

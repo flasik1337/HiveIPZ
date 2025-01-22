@@ -13,6 +13,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _userNicknameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordConfirmController = TextEditingController();
+  bool _showPassword = false;
 
 
   Future<void> _register() async {
@@ -79,16 +81,66 @@ class _RegisterPageState extends State<RegisterPage> {
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Hasło'),
-                obscureText: true,
+                obscureText: !_showPassword,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Wprowadź hasło';
                   }
-                  if (value.length < 8) {
-                    return 'Hasło musi mieć co najmniej 8 znaków';
+                  if (_passwordConfirmController.text != _passwordController.text) {
+                    return 'Hasła nie zgadzają się';
+                  }
+                  final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
+                  if (!passwordRegExp.hasMatch(value)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
+                        ),
+                      ),
+                    );
+                    return 'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.';
                   }
                   return null;
                 },
+              ),
+              TextFormField(
+                controller: _passwordConfirmController,
+                decoration: const InputDecoration(labelText: 'Potwierdź hasło'),
+                obscureText: !_showPassword,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Wprowadź hasło';
+                  }
+                  if (_passwordConfirmController.text != _passwordController.text) {
+                    return 'Hasła nie zgadzają się';
+                  }
+                  final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
+                  if (!passwordRegExp.hasMatch(value)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
+                        ),
+                      ),
+                    );
+                    return 'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.';
+                  }
+                  return null;
+                },
+              ),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                        value: _showPassword,
+                        onChanged: (value) {
+                          setState(() {
+                            _showPassword = value!;
+                          });
+                        }
+                    ),
+                    const Text("Pokaż hasło")
+                  ]
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
