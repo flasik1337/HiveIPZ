@@ -6,7 +6,7 @@ import 'home_page.dart';
 import '../models/event.dart';
 import 'registration.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Obsługa sesji użytkownika
-import 'password_change_page.dart';
+import 'password_reset_page.dart';
 
 class SignInPage extends StatefulWidget {
   final List<Event> events;

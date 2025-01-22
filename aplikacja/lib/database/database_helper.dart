@@ -107,6 +107,40 @@ class DatabaseHelper {
     }
   }
 
+  // Ściąganie hasła
+  static Future<String?> fetchPassword(int userId, String token) async {
+    final url = Uri.parse('$link/get_password/$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['password'];
+    } else {
+      print('Error: ${response.body}');
+      return null;
+    }
+  }
+
+  // Zmiana hasła po starym haśle
+  static Future<void> changePasswordWithOld(String oldPassword, String newPassword) async {
+    final url = Uri.parse('$link/change_password_with_old');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'password': oldPassword, 'newPassword': newPassword}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Unknown error';
+      throw Exception('Błąd podczas zmiany hasła: $error');
+    }
+  }
+
   // Dodawanie wydarzeń
   static Future<void> addEvent(Map<String, dynamic> eventData) async {
     final url = Uri.parse('$link/events');
@@ -125,8 +159,7 @@ class DatabaseHelper {
   }
 
   // Aktualizowanie wydarzeń
-  static Future<void> updateEvent(
-      String id, Map<String, dynamic> eventData) async {
+  static Future<void> updateEvent(String id, Map<String, dynamic> eventData) async {
     final url = Uri.parse('$link/events/$id');
     final response = await http.put(
       url,
@@ -136,10 +169,13 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       print('Wydarzenie zaktualizowane pomyślnie');
+      print("Wysłane dane: $eventData");
     } else {
-      final error = jsonDecode(response.body)['error'];
+      print('Błąd: ${response.statusCode}, Treść odpowiedzi: ${response.body}');
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
       throw Exception(error);
     }
+
   }
 
   // Usuwanie wydarzeń
