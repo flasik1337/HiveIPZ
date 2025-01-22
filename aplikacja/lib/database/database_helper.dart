@@ -128,11 +128,13 @@ class DatabaseHelper {
 
   // Zmiana hasła po starym haśle
   static Future<void> changePasswordWithOld(String oldPassword, String newPassword) async {
+    print("DEBUG: stare hasło: $oldPassword");
+    print("DEBUG: nowe hasło: $newPassword");
     final url = Uri.parse('$link/change_password_with_old');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'password': oldPassword, 'newPassword': newPassword}),
+      body: jsonEncode({'password': oldPassword, 'new_password': newPassword}),
     );
 
     if (response.statusCode != 200) {

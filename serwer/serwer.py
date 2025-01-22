@@ -594,7 +594,7 @@ def change_password_with_old():
 
         cursor = mydb.cursor()
         sql_check = "SELECT id FROM users WHERE password = %s"
-        cursor.execute(sql_check, (email,))
+        cursor.execute(sql_check, (old_password,))
         user = cursor.fetchone()
 
         if not user:
