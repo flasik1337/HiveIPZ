@@ -66,28 +66,40 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 def register():
     try:
         data = request.get_json()
+        imie = data['name']
+        nazwisko = data['surname']
+        wiek = data['age']
         nickname = data['nickname']
         email = data['email']
         password = data['password']
+
+        # if wiek < 16:
+        #     return jsonify({'error': 'Minimalny wiek to 16 lat'}), 400
 
         cursor = mydb.cursor()
         # Generowanie unikalnego tokenu weryfikacyjnego
         verification_token = secrets.token_urlsafe(32)
 
         sql = """
-        INSERT INTO users (nickname, email, password, is_verified, verification_token)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO users (nickname, imie, nazwisko, wiek, email, password, is_verified, verification_token)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
-        val = (nickname, email, password, 0, verification_token)
+        val = (nickname, imie, nazwisko, wiek, email, password, 0, verification_token)
         cursor.execute(sql, val)
         mydb.commit()
 
         # Wysyłanie e-maila weryfikacyjnego
-        verification_link = f"http://{get_local_ip()}:5000/verify_email?token={verification_token}"
-        msg = MIMEText(f"Kliknij poniższy link, aby zweryfikować swój adres e-mail:\n{verification_link}")
+        verification_link = f"http://{get_local_ip()}:5000/verify_email?token={verification_token},"
+        msg = MIMEText(f"Kliknij poniższy link, aby zweryfikować swój adres e-mail: \n{verification_link}", _charset="utf-8")
         msg['Subject'] = "Weryfikacja adresu e-mail"
         msg['From'] = MAIL_USERNAME
         msg['To'] = email
+        # print(f"MAIL_USERNAME: {MAIL_USERNAME}, MAIL_PASSWORD: {MAIL_PASSWORD}")
+        print(f"MAIL_USERNAME: {MAIL_USERNAME}")
+        print(f"email: {email}")
+        print(f"Subject: Weryfikacja adresu e-mail")
+        print(f"Verification link: {verification_link}")
+        print(f"get_local_ip: {get_local_ip()}")
 
         try:
             server = smtplib.SMTP('smtp.gmail.com', 587)
