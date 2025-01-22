@@ -27,7 +27,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
   }
 
   // Walidacja nowego hasła
-  final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~]).{8,}$');
+  final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
   if (!passwordRegExp.hasMatch(newPassword)) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -48,7 +48,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
 
   try {
     final response = await http.post(
-      Uri.parse('http://localhost:5000/change_password'), // Endpoint na backendzie
+      Uri.parse('http://212.127.78.92:5000/change_password'), // Endpoint na backendzie
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'email': email, 'new_password': newPassword}),
     );
