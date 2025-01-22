@@ -23,13 +23,25 @@ class DatabaseHelper {
   //   return await MySqlConnection.connect(settings);
   // }
   static Future<void> addUser(
-      String nickname, String email, String password) async {
+      String name,
+      String surname,
+      int age,
+      String nickname,
+      String email,
+      String password,
+      ) async {
     final url = Uri.parse('$link/register');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(
-          {'nickname': nickname, 'email': email, 'password': password}),
+      body: jsonEncode({
+        'name': name,
+        'surname': surname,
+        'age': age,
+        'nickname': nickname,
+        'email': email,
+        'password': password,
+      }),
     );
 
     if (response.statusCode == 201) {
