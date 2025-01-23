@@ -192,7 +192,13 @@ class _EventPageState extends State<EventPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
-              onPressed: _joinOrLeaveEvent,
+              onPressed: () {
+                if(_currentEvent.registeredParticipants >= _currentEvent.maxParticipants && _isUserJoined) {
+                  null;
+                } else {
+                  _joinOrLeaveEvent();
+                }
+              },
               child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
             ),
           ),
