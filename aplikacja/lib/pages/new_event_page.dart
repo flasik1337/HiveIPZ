@@ -95,7 +95,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
           'max_participants': _maxParticipantsController.text.isEmpty
               ? -1
               : int.parse(_maxParticipantsController.text),
-          'registered_participants': 1,
+          'registered_participants': 0,
           'image': _imagePath ?? 'assets/placeholder.jpg',
           'user_id': userId,
         };
