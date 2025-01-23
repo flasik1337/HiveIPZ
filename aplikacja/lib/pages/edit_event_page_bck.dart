@@ -1,10 +1,13 @@
 import 'dart:math';
 
 import 'package:Hive/database/database_helper.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../styles/gradients.dart';
 import '../widgets/event_type_grid.dart';
+
 
 class EditEventPage extends StatefulWidget {
   final Event event;
@@ -24,6 +27,7 @@ class _EditEventPageState extends State<EditEventPage> {
   late TextEditingController maxParticipantsController;
   late String _typeController;
   late DateTime _dateController;
+  late TextEditingController _cenaController;
 
   @override
   void initState() {
@@ -32,10 +36,11 @@ class _EditEventPageState extends State<EditEventPage> {
     locationController = TextEditingController(text: widget.event.location);
     _descriptionController = TextEditingController(text: widget.event.description);
     _typeController = widget.event.type;
+    _cenaController = TextEditingController(text: widget.event.cena.toString());
     _dateController = widget.event.startDate;
     maxParticipantsController = widget.event.maxParticipants != -1 ?
-    TextEditingController(text: widget.event.maxParticipants.toString()) :
-    TextEditingController(text: "");
+      TextEditingController(text: widget.event.maxParticipants.toString()) :
+      TextEditingController(text: "");
   }
 
   // to dałoby się zrobić jako fun(context, controller)
@@ -74,10 +79,19 @@ class _EditEventPageState extends State<EditEventPage> {
               controller: locationController,
               decoration: const InputDecoration(labelText: 'Lokalizacja'),
             ),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Opis'),
+            ),
+            TextFormField(
+              controller: _cenaController,
+              decoration: const InputDecoration(labelText: 'Cena wejścia (zł)'),
+              keyboardType: TextInputType.number,
+            ),
             TextButton(
               onPressed: () => _openTypeSelector(context),
               child: Text(
-                  'Zmień typ wydarzenia: ${_typeController}'
+                'Zmień typ wydarzenia: ${_typeController}'
               ),
             ),
             TextButton(
@@ -95,18 +109,19 @@ class _EditEventPageState extends State<EditEventPage> {
                 }
               },
               child: Text(
-                  'Zmień datę wydarzenia: ${_dateController.day}.${_dateController.month}.${_dateController.year}.'
+                'Zmień datę wydarzenia: ${_dateController.day}.${_dateController.month}.${_dateController.year}.'
               ),
             ),
-            TextField(
-              controller: maxParticipantsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Maksymalna liczba uczestników'),
-            ),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Opis'),
-            ),
+            TextFormField(
+                controller: maxParticipantsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Maksymalna liczba uczestników'),
+                validator: (newMaxParticipants) {
+                  if (int.tryParse(newMaxParticipants!)! < widget.event.registeredParticipants) {
+                    return("Limit uczestników jest mniejszy niż liczba zarejestrowanych");
+                  }
+                },
+              ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
@@ -119,7 +134,8 @@ class _EditEventPageState extends State<EditEventPage> {
                   _typeController,
                   _dateController,
                   int.tryParse(maxParticipantsController.text) ?? -1,
-                );
+                  double.tryParse(_cenaController.text) ?? 0.0,
+                  );
               },
               child: const Text('Zapisz zmiany'),
             ),
@@ -129,12 +145,11 @@ class _EditEventPageState extends State<EditEventPage> {
     );
   }
 
-
-  void _saveChanges(BuildContext context, String name, String location, String description, String type, DateTime date, int maxParticipants) async {
-    //TODO: połączenie się z bazą danych
-
+  Future<void> _saveChanges(BuildContext context, String name, String location,
+      String description, String type, DateTime date, int maxParticipants, double cena) async {
     final updatedEvent = Event(
-      id: widget.event.id, //id pozostaje bez zmian
+      id: widget.event.id,
+      //id pozostaje bez zmian
       name: name,
       location: location,
       description: description,
@@ -144,31 +159,33 @@ class _EditEventPageState extends State<EditEventPage> {
       registeredParticipants: widget.event.registeredParticipants,
       imagePath: widget.event.imagePath, //?TODO: zmiana obrazu?
       //nazwa organizatora
+      cena: cena,
+      
+      
     );
 
     try {
       final eventData = {
-        'name': updatedEvent.name,
-        'location': updatedEvent.location,
-        'description': updatedEvent.description,
-        'type': updatedEvent.type,
-        'start_date': updatedEvent.startDate.toIso8601String(),
-        'max_participants': updatedEvent.maxParticipants,
-        'registered_participants': updatedEvent.registeredParticipants,
-        'image': updatedEvent.imagePath,
+        'name': name,
+        'location': location,
+        'description': description,
+        'type': type,
+        'start_date': date.toIso8601String(),
+        'max_participants':maxParticipants,
+        'registered_participants': widget.event.registeredParticipants,
+        'image': widget.event.imagePath,
+        'cena': cena,
       };
-
-      await DatabaseHelper.updateEvent(updatedEvent.id.toString(), eventData);
-
-      widget.onSave(updatedEvent);
-
-      Navigator.pop(context); // Powrót do poprzedniej strony po zapisaniu
-    } catch (e) {
-      print("Błąd przy aktualizowaniu wydarzenia: $e");
+      await DatabaseHelper.updateEvent(widget.event.id, eventData);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wystąpił błąd podczas aktualizacji wydarzenia.')),
+        const SnackBar(content: Text('Wydarzenie zaktualizowane pomyślnie!')),
+      );
+      widget.onSave(updatedEvent);
+      Navigator.pop(context, updatedEvent);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się zapisać zmian: $e')),
       );
     }
-
   }
 }

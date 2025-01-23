@@ -9,6 +9,7 @@ class Event {
   final int registeredParticipants;
   final String imagePath;
   final int? userId; // Pole opcjonalne, może być null
+  final double cena;
 
   const Event({
     required this.id,
@@ -21,6 +22,7 @@ class Event {
     required this.registeredParticipants,
     required this.imagePath,
     this.userId,
+    required this.cena,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,9 @@ class Event {
       registeredParticipants: json['registered_participants'] as int,
       imagePath: json['image'] as String,
       userId: json['user_id'] != null ? json['user_id'] as int : null,
+      cena: json['cena'] != null 
+      ? double.tryParse(json['cena'].toString()) ?? 0.0
+      : 0.0,
     );
   }
 
@@ -49,6 +54,7 @@ class Event {
     int? registeredParticipants,
     String? imagePath,
     int? userId,
+    double? cena,
   }) {
     return Event(
       id: id ?? this.id,
@@ -61,6 +67,7 @@ class Event {
       registeredParticipants: registeredParticipants ?? this.registeredParticipants,
       imagePath: imagePath ?? this.imagePath,
       userId: userId ?? this.userId,
+      cena: cena ?? this.cena,
     );
   }
 }

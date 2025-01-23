@@ -5,7 +5,7 @@ import 'package:mysql1/mysql1.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://192.168.0.16:5000';
+  static const String link = 'http://212.127.78.92:5000';
   // static const String host = 'localhost';
   // static const int port = 3306;
   // static const String user = 'root';
@@ -152,14 +152,13 @@ class DatabaseHelper {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(eventData),
     );
-
     if (response.statusCode == 201) {
       print('Wydarzenie dodane pomyślnie');
     } else {
-      final error = jsonDecode(response.body)['error'];
-      throw Exception(error);
+      throw Exception(jsonDecode(response.body)['error']);
     }
-  }
+}
+
 
   // Aktualizowanie wydarzeń
   static Future<void> updateEvent(String id, Map<String, dynamic> eventData) async {
