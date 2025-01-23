@@ -130,22 +130,41 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-  void _filterEventsByType(String typeFilter) {
+  void _filterEventsByType(String typeFilter, String query) {
     final filteredEvents = _events
         .where((event) =>
         event.type.toLowerCase().contains(typeFilter.toLowerCase()))
         .toList();
 
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) =>
-                FilteredPage(filteredEvents: filteredEvents,
-                  onUpdate: (Event) {},)) //dodane onUpdate?!
-    );
+    if (filteredEvents.isEmpty) {
+      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text(
+              'Nie znaleziono żadnych wydarzeń.',
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Icon(Icons.cancel, color: Colors.red),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
   }
 
-  void _filterEventsByDate(DateTime dateFilter) {
+
+
+
+  void _filterEventsByDate(DateTime dateFilter, String query) {
     final filteredEvents = _events
         .where((event) =>
     event.startDate.year == dateFilter.year &&
@@ -153,14 +172,29 @@ class _HomePageState extends State<HomePage> {
         event.startDate.day == dateFilter.day)
         .toList();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            FilteredPage(filteredEvents: filteredEvents,
-              onUpdate: (Event) {},), //dodane onUpdate?!
-      ),
-    );
+    if (filteredEvents.isEmpty) {
+      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text(
+              'Nie znaleziono żadnych wydarzeń.',
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Icon(Icons.cancel, color: Colors.red),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
   }
 
   /// Otwieranie okna dialogowego z wyszukiwaniem
@@ -251,7 +285,7 @@ class _HomePageState extends State<HomePage> {
                               builder: (BuildContext context) {
                                 return EventTypeGrid(
                                     onEventTypeSelected: (String typeFilter) {
-                                      _filterEventsByType(typeFilter);
+                                      _filterEventsByType(typeFilter, "");
                                     });
                               });
                         }
@@ -267,7 +301,7 @@ class _HomePageState extends State<HomePage> {
                             lastDate: DateTime(2100),
                           );
                           if (pickedDate != null) {
-                            _filterEventsByDate(pickedDate);
+                            _filterEventsByDate(pickedDate, "");
                           }
                         }
                     ),
