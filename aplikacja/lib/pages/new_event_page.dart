@@ -29,6 +29,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
   String? _imagePath = 'assets/placeholder.jpg';
   final ImagePicker _picker = ImagePicker();
   int? userId;
+  final TextEditingController _cenaController = TextEditingController();
 
   @override
   void initState() {
@@ -98,6 +99,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
           'registered_participants': 0,
           'image': _imagePath ?? 'assets/placeholder.jpg',
           'user_id': userId,
+          'cena': _cenaController.text.isEmpty ? 0.0 : double.parse(_cenaController.text),
         };
 
         // zapisujemy dane do bazy
@@ -238,6 +240,17 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 decoration: const InputDecoration(labelText: 'Opis'),
                 validator: (value) =>
                 value == null || value.isEmpty ? 'Podaj opis wydarzenia' : null,
+              ),
+              TextFormField(
+                controller: _cenaController,
+                decoration: const InputDecoration(labelText: 'Cena wejścia (zł)'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value != null && value.isNotEmpty && double.tryParse(value) == null) {
+                    return 'Podaj poprawną kwotę';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
                 controller: _maxParticipantsController,

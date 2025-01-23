@@ -345,8 +345,8 @@ def add_event():
         data = request.get_json()
         cursor = mydb.cursor()
         sql = """
-        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image,user_id, cena)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         val = (
             data['id'],
@@ -358,12 +358,15 @@ def add_event():
             data['max_participants'],
             data['registered_participants'],
             data['image'],
+            data['user_id'],
+            data['cena'],
         )
         cursor.execute(sql, val)
         mydb.commit()
         return jsonify({'message': 'Wydarzenie dodane pomyślnie'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 # ------------------------ AKTUALIZOWANIE WYDARZEN W BAZIE ------------------------
@@ -374,7 +377,7 @@ def update_event(event_id):
         cursor = mydb.cursor()
         sql = """
         UPDATE events
-        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s, user_id = %s
+        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s, cena = %s
         WHERE id = %s
         """
         val = (
@@ -386,7 +389,7 @@ def update_event(event_id):
             data['max_participants'],
             data['registered_participants'],
             data['image'],
-            data['user_id'],
+            data['cena'],
             event_id
         )
         cursor.execute(sql, val)
@@ -394,6 +397,7 @@ def update_event(event_id):
         return jsonify({'message': 'Wydarzenie zaktualizowane pomyślnie'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/events/<event_id>', methods=['DELETE'])
 def delete_event(event_id):

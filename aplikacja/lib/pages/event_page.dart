@@ -146,6 +146,16 @@ class _EventPageState extends State<EventPage> {
             ),
           ),
           Padding(
+  padding: const EdgeInsets.all(16),
+  child: Text(
+    _currentEvent.cena > 0
+        ? 'Cena wejścia: ${_currentEvent.cena} zł'
+        : 'Wejście darmowe',
+    style: const TextStyle(fontSize: 20, color: Colors.white),
+  ),
+),
+
+          Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
               _currentEvent.description,
