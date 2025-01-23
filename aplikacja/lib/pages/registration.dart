@@ -97,7 +97,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 TextFormField(
                   controller: _userNicknameController,
-                  decoration: const InputDecoration(labelText: 'Nick'),
+                  decoration: const InputDecoration(labelText: 'Login'),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Wprowadź nazwę użytkownika';
@@ -133,14 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     }
                     final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
                     if (!passwordRegExp.hasMatch(value)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
-                          ),
-                        ),
-                      );
-                      return 'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.';
+                      return 'Hasło musi mieć co najmniej 8 znaków, zawierać małą literę, wielką literę i znak specjalny.';
                     }
                     return null;
                   },
@@ -153,21 +146,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.isEmpty) {
                       return 'Wprowadź hasło';
                     }
-                    if (_passwordConfirmController.text != _passwordController.text) {
-                      return 'Hasła nie zgadzają się';
-                    }
-                    final passwordRegExp = RegExp(r'^(?=.*[A-Z])(?=.*[!@#\$&*~_-]).{8,}$');
-                    if (!passwordRegExp.hasMatch(value)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.',
-                          ),
-                        ),
-                      );
-                      return 'Hasło musi mieć co najmniej 8 znaków, zawierać wielką literę i znak specjalny.';
-                    }
-                    return null;
                   },
                 ),
                 Row(

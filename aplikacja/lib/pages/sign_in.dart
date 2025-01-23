@@ -44,6 +44,7 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Future<void> _signIn() async {
+    //nickname to wszędzie login tylko nie zostało to zmienione w bazie danych
     final nickName = _loginController.text;
     final password = _passwordController.text;
 

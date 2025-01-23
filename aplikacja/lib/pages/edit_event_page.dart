@@ -27,6 +27,7 @@ class _EditEventPageState extends State<EditEventPage> {
   late TextEditingController maxParticipantsController;
   late String _typeController;
   late DateTime _dateController;
+  late TextEditingController _cenaController;
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _EditEventPageState extends State<EditEventPage> {
     locationController = TextEditingController(text: widget.event.location);
     _descriptionController = TextEditingController(text: widget.event.description);
     _typeController = widget.event.type;
+    _cenaController = TextEditingController(text: widget.event.cena.toString());
     _dateController = widget.event.startDate;
     maxParticipantsController = widget.event.maxParticipants != -1 ?
       TextEditingController(text: widget.event.maxParticipants.toString()) :
@@ -80,6 +82,11 @@ class _EditEventPageState extends State<EditEventPage> {
             TextField(
               controller: _descriptionController,
               decoration: const InputDecoration(labelText: 'Opis'),
+            ),
+            TextFormField(
+              controller: _cenaController,
+              decoration: const InputDecoration(labelText: 'Cena wejścia (zł)'),
+              keyboardType: TextInputType.number,
             ),
             TextButton(
               onPressed: () => _openTypeSelector(context),
@@ -127,6 +134,7 @@ class _EditEventPageState extends State<EditEventPage> {
                   _typeController,
                   _dateController,
                   int.tryParse(maxParticipantsController.text) ?? -1,
+                  double.tryParse(_cenaController.text) ?? 0.0,
                   );
               },
               child: const Text('Zapisz zmiany'),
@@ -138,7 +146,7 @@ class _EditEventPageState extends State<EditEventPage> {
   }
 
   Future<void> _saveChanges(BuildContext context, String name, String location,
-      String description, String type, DateTime date, int maxParticipants) async {
+      String description, String type, DateTime date, int maxParticipants, double cena) async {
     final updatedEvent = Event(
       id: widget.event.id,
       //id pozostaje bez zmian
@@ -151,6 +159,9 @@ class _EditEventPageState extends State<EditEventPage> {
       registeredParticipants: widget.event.registeredParticipants,
       imagePath: widget.event.imagePath, //?TODO: zmiana obrazu?
       //nazwa organizatora
+      cena: cena,
+      
+      
     );
 
     try {
@@ -163,6 +174,7 @@ class _EditEventPageState extends State<EditEventPage> {
         'max_participants':maxParticipants,
         'registered_participants': widget.event.registeredParticipants,
         'image': widget.event.imagePath,
+        'cena': cena,
       };
       await DatabaseHelper.updateEvent(widget.event.id, eventData);
       ScaffoldMessenger.of(context).showSnackBar(
