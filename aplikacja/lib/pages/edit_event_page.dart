@@ -63,6 +63,41 @@ class _EditEventPageState extends State<EditEventPage> {
     }
   }
 
+  Future<bool> _showDeleteEventDialog(BuildContext context) async {
+    return await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+          title: const Text("Potwierdź usunięcie wydarzenia"),
+          content: const Text("Czy na pewno chcesz usunąć trwale wydarzenie? Tej operacji nie można cofnąć."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Anuluj'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Usuń',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          );
+        },
+    ) ?? false;
+  }
+
+  Future<void> _deleteEvent(BuildContext context, String eventId) async {
+    final shouldDelete = await _showDeleteEventDialog(context);
+    if (shouldDelete) {
+      DatabaseHelper.deleteEvent(eventId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wydarzenie zostało usunięte')),
+      );
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +174,14 @@ class _EditEventPageState extends State<EditEventPage> {
               },
               child: const Text('Zapisz zmiany'),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _deleteEvent(context, widget.event.id),
+              child: const Text("Usuń wydarzenie"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+            )
           ],
         ),
       ),

@@ -18,53 +18,54 @@ class _EventPageState extends State<EventPage> {
   late Event _currentEvent; // aktualne wydarzenie
   bool _isUserJoined = false; // Czy użytkownik jest zapisany na wydarzenie
   bool _isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
+  String? _userId; // Przechowywanie userId
+
 
   @override
   void initState() {
     super.initState();
     _currentEvent = widget.event;
-    _checkUserJoinedStatus(); // Sparawdzanie czy użytkownik jest zapisany na wydarzenie
-    _checkIfUserIsOwner(); // Sprawdzenie, czy użytkownik jest właścicielem wydarzenia
+    _initializeUser(); // Inicjalizacja użytkownika
   }
 
-
+  Future<void> _initializeUser() async {
+    try {
+      _userId = await DatabaseHelper.getUserIdFromToken();
+      print('DEBUG: userId = $_userId');
+      _checkUserJoinedStatus();
+      _checkIfUserIsOwner();
+    } catch (e) {
+      print('Błąd podczas inicjalizacji użytkownika: $e');
+    }
+  }
   void _updateEvent(Event updatedEvent) {
     setState(() {
       _currentEvent = updatedEvent;
     });
   }
 
-  Future<void> _checkIfUserIsOwner() async {
-    try {
-      final userId = await DatabaseHelper.getUserIdFromToken();
-      print('DEBUG: userId = $userId');
+  void _checkIfUserIsOwner() {
+    if (_userId != null) {
       setState(() {
-        _isUserOwner = _currentEvent.userId == int.tryParse(userId);
+        _isUserOwner = _currentEvent.userId == int.tryParse(_userId!);
       });
-      print('DEBUG: isUserOwner = $_isUserJoined');
-    } catch (e) {
-      print(
-          'Błąd podczas sprawdzania, czy użytkownik jest właścicielem wydarzenia: $e');
+      print('DEBUG: isUserOwner = $_isUserOwner');
     }
   }
 
-  Future<bool> _checkUserJoinedStatus() async {
-    try {
-      final userId = await DatabaseHelper.getUserIdFromToken();
-      print('DEBUG: userId = $userId'); // Loguj userId
+  Future<void> _checkUserJoinedStatus() async {
+    if (_userId != null) {
+      try {
+        final isJoined = await DatabaseHelper.isUserJoinedEvent(
+            _currentEvent.id, _userId!);
+        print('DEBUG: isUserJoined = $isJoined'); // Loguj status
 
-      final isJoined = await DatabaseHelper.isUserJoinedEvent(
-          _currentEvent.id, userId);
-      print('DEBUG: isUserJoined = $isJoined'); // Loguj status
-
-      setState(() {
-        _isUserJoined = isJoined;
-      });
-
-      return _isUserJoined;
-    } catch (e) {
-      print('Błąd podczas sprawdzania statusu użytkownika: $e');
-      return false;
+        setState(() {
+          _isUserJoined = isJoined;
+        });
+      } catch (e) {
+        print('Błąd podczas sprawdzania statusu użytkownika: $e');
+      }
     }
   }
 
@@ -81,14 +82,24 @@ class _EventPageState extends State<EventPage> {
           );
         });
       } else {
-        // Zapisanie na wydarzenie
-        await DatabaseHelper.joinEvent(_currentEvent.id);
-        setState(() {
-          _isUserJoined = true;
-          _currentEvent = _currentEvent.copyWith(
-            registeredParticipants: _currentEvent.registeredParticipants + 1,
+        if (_currentEvent.maxParticipants != -1 &&
+            _currentEvent.registeredParticipants >= _currentEvent.maxParticipants) {
+          // Jeśli liczba uczestników osiągnęła maksymalny limit
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Wydarzenie jest już pełne!'),
+            ),
           );
-        });
+        } else {
+          // Zapisanie na wydarzenie
+          await DatabaseHelper.joinEvent(_currentEvent.id);
+          setState(() {
+            _isUserJoined = true;
+            _currentEvent = _currentEvent.copyWith(
+              registeredParticipants: _currentEvent.registeredParticipants + 1,
+            );
+          });
+        }
       }
     } catch (e) {
       print('Błąd podczas zapisywania/wypisywania użytkownika: $e');
@@ -146,15 +157,14 @@ class _EventPageState extends State<EventPage> {
             ),
           ),
           Padding(
-  padding: const EdgeInsets.all(16),
-  child: Text(
-    _currentEvent.cena > 0
-        ? 'Cena wejścia: ${_currentEvent.cena} zł'
-        : 'Wejście darmowe',
-    style: const TextStyle(fontSize: 20, color: Colors.white),
-  ),
-),
-
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              _currentEvent.cena > 0
+                  ? 'Cena wejścia: ${_currentEvent.cena} zł'
+                  : 'Wejście darmowe',
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -171,7 +181,7 @@ class _EventPageState extends State<EventPage> {
               _currentEvent.maxParticipants != -1
                   ? '${_currentEvent.registeredParticipants} / ${_currentEvent
                   .maxParticipants}'
-                  : 'Wydarzenie otwarte',
+                  : 'Wydarzenie otwarte, ${_currentEvent.registeredParticipants} uczestników',
               style: const TextStyle(
                 fontSize: 30,
                 color: Colors.white,
@@ -203,11 +213,7 @@ class _EventPageState extends State<EventPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
               onPressed: () {
-                if(_currentEvent.registeredParticipants >= _currentEvent.maxParticipants && _isUserJoined) {
-                  null;
-                } else {
-                  _joinOrLeaveEvent();
-                }
+                _joinOrLeaveEvent();
               },
               child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
             ),

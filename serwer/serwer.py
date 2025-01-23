@@ -403,6 +403,9 @@ def update_event(event_id):
 def delete_event(event_id):
     try:
         cursor = mydb.cursor()
+        sql_delete_participants = "DELETE FROM event_participants WHERE event_id = %s"
+        cursor.execute(sql_delete_participants, (event_id,))
+
         sql = "DELETE FROM events WHERE id = %s"
         cursor.execute(sql, (event_id,))
         mydb.commit()
