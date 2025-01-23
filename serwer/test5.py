@@ -344,8 +344,8 @@ def add_event():
         data = request.get_json()
         cursor = mydb.cursor()
         sql = """
-        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image, user_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         val = (
             data['id'],
@@ -357,6 +357,7 @@ def add_event():
             data['max_participants'],
             data['registered_participants'],
             data['image'],
+            data['user_id']
         )
         cursor.execute(sql, val)
         mydb.commit()
@@ -433,6 +434,15 @@ def join_event(event_id):
         # Zapis użytkownika na wydarzenie
         sql_insert = "INSERT INTO event_participants (event_id, user_id) VALUES (%s, %s)"
         cursor.execute(sql_insert, (event_id, user_id))
+        
+        # Aktualizacja liczby uczestników
+        sql_update_participants = """
+        UPDATE events
+        SET registered_participants = registered_participants + 1
+        WHERE id = %s
+        """
+        cursor.execute(sql_update_participants, (event_id,))
+        
         mydb.commit()
 
         return jsonify({'message': 'Zapisano użytkownika na wydarzenie'}), 200
@@ -464,6 +474,15 @@ def leave_event(event_id):
         # Usuwanie użytkownika z wydarzenia
         sql_delete = "DELETE FROM event_participants WHERE event_id = %s AND user_id = %s"
         cursor.execute(sql_delete, (event_id, user_id))
+        
+        # Aktualizacja liczby uczestników
+        sql_update_participants = """
+        UPDATE events
+        SET registered_participants = registered_participants - 1
+        WHERE id = %s
+        """
+        cursor.execute(sql_update_participants, (event_id,))
+        
         mydb.commit()
 
         return jsonify({'message': 'Użytkownik został wypisany z wydarzenia'}), 200
