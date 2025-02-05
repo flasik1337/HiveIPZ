@@ -1,17 +1,12 @@
-import 'dart:math';
-
 import 'package:Hive/database/database_helper.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
-import '../styles/gradients.dart';
 import '../widgets/event_type_grid.dart';
 
-
+/// Strona edycji wydarenia
 class EditEventPage extends StatefulWidget {
-  final Event event;
-  final Function(Event) onSave;
+  final Event event;  // Event, który ma być poddany edycji
+  final Function(Event) onSave; // Funkcja zapisu wydarzenia
 
   const EditEventPage({Key? key, required this.event, required this.onSave})
       : super(key: key);
@@ -43,7 +38,6 @@ class _EditEventPageState extends State<EditEventPage> {
       TextEditingController(text: "");
   }
 
-  // to dałoby się zrobić jako fun(context, controller)
   Future<void> _openTypeSelector(BuildContext context) async {
     final selectedType = await showModalBottomSheet<String>(
       context: context,
@@ -155,6 +149,8 @@ class _EditEventPageState extends State<EditEventPage> {
                   if (int.tryParse(newMaxParticipants!)! < widget.event.registeredParticipants) {
                     return("Limit uczestników jest mniejszy niż liczba zarejestrowanych");
                   }
+                  // FIXME: intellij proponuje, żeby wrzucić mu tutaj return null i git, ale nie wiem czy to bezpieczne
+                  return null;
                 },
               ),
             const SizedBox(height: 20),
@@ -200,8 +196,8 @@ class _EditEventPageState extends State<EditEventPage> {
       startDate: date,
       maxParticipants: maxParticipants,
       registeredParticipants: widget.event.registeredParticipants,
-      imagePath: widget.event.imagePath, //?TODO: zmiana obrazu?
-      //nazwa organizatora
+      imagePath: widget.event.imagePath,
+      // TODO: nazwa organizatora
       cena: cena,
       
       

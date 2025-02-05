@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../styles/gradients.dart';
 import '../pages/edit_event_page.dart';
-import '../database/database_helper.dart'; // Dodano do obsługi API
+import '../database/database_helper.dart';
+import '../styles/text_styles.dart';
 
+/// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
   final Event event;
   final Function(Event) onUpdate;
@@ -31,17 +33,11 @@ class _EventPageState extends State<EventPage> {
   Future<void> _initializeUser() async {
     try {
       _userId = await DatabaseHelper.getUserIdFromToken();
-      print('DEBUG: userId = $_userId');
       _checkUserJoinedStatus();
       _checkIfUserIsOwner();
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
-  }
-  void _updateEvent(Event updatedEvent) {
-    setState(() {
-      _currentEvent = updatedEvent;
-    });
   }
 
   void _checkIfUserIsOwner() {
@@ -49,7 +45,6 @@ class _EventPageState extends State<EventPage> {
       setState(() {
         _isUserOwner = _currentEvent.userId == int.tryParse(_userId!);
       });
-      print('DEBUG: isUserOwner = $_isUserOwner');
     }
   }
 
@@ -58,7 +53,6 @@ class _EventPageState extends State<EventPage> {
       try {
         final isJoined = await DatabaseHelper.isUserJoinedEvent(
             _currentEvent.id, _userId!);
-        print('DEBUG: isUserJoined = $isJoined'); // Loguj status
 
         setState(() {
           _isUserJoined = isJoined;
@@ -135,11 +129,7 @@ class _EventPageState extends State<EventPage> {
                 child: Text(
                   _currentEvent.name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: HiveTextStyles.title,
                 ),
               ),
             ],
@@ -150,10 +140,7 @@ class _EventPageState extends State<EventPage> {
               '${_currentEvent.location}  |  ${_currentEvent
                   .type}\n${_currentEvent.startDate.day}.${_currentEvent
                   .startDate.month}.${_currentEvent.startDate.year}',
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.white,
-              ),
+              style: HiveTextStyles.regular,
             ),
           ),
           Padding(
@@ -162,17 +149,14 @@ class _EventPageState extends State<EventPage> {
               _currentEvent.cena > 0
                   ? 'Cena wejścia: ${_currentEvent.cena} zł'
                   : 'Wejście darmowe',
-              style: const TextStyle(fontSize: 20, color: Colors.white),
+              style: HiveTextStyles.regular,
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
               _currentEvent.description,
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.white,
-              ),
+              style: HiveTextStyles.regular,
             ),
           ),
           Padding(
@@ -182,10 +166,7 @@ class _EventPageState extends State<EventPage> {
                   ? '${_currentEvent.registeredParticipants} / ${_currentEvent
                   .maxParticipants}'
                   : 'Wydarzenie otwarte, ${_currentEvent.registeredParticipants} uczestników',
-              style: const TextStyle(
-                fontSize: 30,
-                color: Colors.white,
-              ),
+              style: HiveTextStyles.regular,
             ),
           ),
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia

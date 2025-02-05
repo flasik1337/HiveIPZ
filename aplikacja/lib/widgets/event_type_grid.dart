@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Widżet realizujący siatkę wyboru pojedynczego typu wydarzenia
 class EventTypeGrid extends StatelessWidget {
   final void Function(String) onEventTypeSelected;
 

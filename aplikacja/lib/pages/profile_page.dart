@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:Hive/styles/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'settings_page.dart';
 import '../database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Strona profilu użytkownika
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
 
@@ -59,6 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
           throw Exception("Brak tokenu w SharedPreferences");
         }
 
+        // TODO: to nie powinno być w database_helper?
         // Wyślij obraz na serwer
         final request = http.MultipartRequest(
           'POST',
@@ -152,11 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 userData != null && userData!['nickName'] != null
                     ? userData!['nickName']
                     : 'Nie ustawiono',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                style: HiveTextStyles.title,
               ),
               const SizedBox(height: 20),
               // Biały kontener z zaokrąglonymi rogami

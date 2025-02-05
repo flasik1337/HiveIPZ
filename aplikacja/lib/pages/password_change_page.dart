@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import '../database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Strona zmiany hasła z użyciem starego hasła
 class PasswordChangePage extends StatefulWidget {
   const PasswordChangePage({Key? key}) : super(key: key);
 
@@ -54,9 +54,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
 
   void fetchCurrentPassword(String token) async {
     try {
-      print("DEBUG: Pobieranie hasła dla userId: $userId z tokenem: ${userData!['token']}");
       final password = await DatabaseHelper.fetchPassword(userId!, token);
-      print("DEBUG: Otrzymane hasło: $password");
       setState(() {
         oldPassword = password ?? '';
       });
@@ -119,12 +117,6 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
 
   @override
   Widget build(BuildContext context) {
-    // if (userData == null || oldPassword.isEmpty) {
-    //   return const Scaffold(
-    //     body: Center(child: CircularProgressIndicator()),
-    //   );
-    // }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Zmień hasło'),
@@ -161,18 +153,18 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
               ),
             ),
             Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Checkbox(
-                      value: _showPassword,
-                      onChanged: (value) {
-                        setState(() {
-                          _showPassword = value!;
-                        });
-                      }
-                  ),
-                  const Text("Pokaż hasło")
-                ]
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: _showPassword,
+                  onChanged: (value) {
+                    setState(() {
+                      _showPassword = value!;
+                    });
+                  }
+                ),
+                const Text("Pokaż hasło")
+              ]
             ),
             const SizedBox(height: 24),
             ElevatedButton(

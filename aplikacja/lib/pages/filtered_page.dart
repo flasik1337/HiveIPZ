@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/event.dart';
-import '../widgets/event_card.dart'; // jeśli używasz EventCard
+import '../widgets/event_card.dart';
 
+/// Strona wyświetlająca zbiór wydarzeń spełniająca dane kryteria, obsługa filtrów
 class FilteredPage extends StatelessWidget {
   final List<Event> filteredEvents;
   final Function(Event) onUpdate; // funkcja do aktualizacji wydarzeń

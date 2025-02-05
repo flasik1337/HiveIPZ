@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 
+/// Strona rejestracji użytkownika
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -146,6 +147,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.isEmpty) {
                       return 'Wprowadź hasło';
                     }
+                    // FIXME: intellij proponuje, żeby wrzucić mu tutaj return null i git, ale nie wiem czy to bezpieczne
+                    return null;
                   },
                 ),
                 Row(

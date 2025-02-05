@@ -51,6 +51,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         splashFactory: NoSplash.splashFactory,
       ),
+
       initialRoute: initialRoute,
       routes: {
         '/sign_in': (context) => SignInPage(events: initialEvents, errorMessage: errorMessage),

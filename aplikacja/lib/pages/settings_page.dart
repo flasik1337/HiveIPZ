@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../pages/password_change_page.dart';
 
+/// Strona ustawień użytkownika
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
 
@@ -111,8 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Wylogowano pomyślnie')),
         );
-        Navigator.pushReplacementNamed(
-            context, '/sign_in'); // Powrót do ekranu logowania
+        Navigator.pushReplacementNamed(context, '/sign_in'); // Powrót do ekranu logowania
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Błąd: $e')),
@@ -261,7 +261,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ElevatedButton(
             onPressed: () {
               if (userId != null && userData != null) {
-                final token = userData!['token'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) =>

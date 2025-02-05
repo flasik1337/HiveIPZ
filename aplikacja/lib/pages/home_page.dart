@@ -1,5 +1,4 @@
 import 'package:Hive/widgets/event_type_grid.dart';
-import 'package:Hive/pages/event_page.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/event.dart';
@@ -9,7 +8,7 @@ import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
 
 
-
+/// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
   final List<Event> events;
 
@@ -43,9 +42,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
-  /// args:
-  ///   String query: hasło kluczowe do wyszukania
   /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
   /// args:
   ///   String query: hasło kluczowe do wyszukania
@@ -85,7 +81,6 @@ class _HomePageState extends State<HomePage> {
         .toList();
 
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -108,23 +103,22 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    print('Debug: Liczba znalezionych wydarzeń = ${filteredEvents.length}');
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            FilteredPage(
-              filteredEvents: filteredEvents,
-              onUpdate: (updatedEvent) {
-                setState(() {
-                  final index =
-                  _events.indexWhere((event) => event.id == updatedEvent.id);
-                  if (index != -1) {
-                    _events[index] = updatedEvent;
-                  }
-                });
-              },
-            ),
+          FilteredPage(
+            filteredEvents: filteredEvents,
+            onUpdate: (updatedEvent) {
+              setState(() {
+                final index =
+                _events.indexWhere((event) => event.id == updatedEvent.id);
+                if (index != -1) {
+                  _events[index] = updatedEvent;
+                }
+              });
+            },
+          ),
       ),
     );
   }
@@ -137,7 +131,6 @@ class _HomePageState extends State<HomePage> {
         .toList();
 
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -173,7 +166,6 @@ class _HomePageState extends State<HomePage> {
         .toList();
 
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -200,40 +192,38 @@ class _HomePageState extends State<HomePage> {
   /// Otwieranie okna dialogowego z wyszukiwaniem
   void _showSearchDialog({bool onlyLocation = false}) {
     showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Wyszukiwanie wydarzeń'),
-            content: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: onlyLocation
-                    ? 'Wprowadź lokalizację'
-                    : 'Wprowadź nazwę lub lokalizację',
-              ),
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Wyszukiwanie wydarzeń'),
+          content: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: onlyLocation
+                  ? 'Wprowadź lokalizację'
+                  : 'Wprowadź nazwę lub lokalizację',
             ),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _searchController.clear();
-                  },
-                  child: const Icon(Icons.cancel)
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  print('Debug: Wartość w polu wyszukiwania: ${_searchController
-                      .text}'); // Debugowanie
-                  _filterEventsByQuery(_searchController.text);
-                  _searchController.clear(); // Wyczyść pole
-                },
-                child: const Icon(Icons.search),
-              ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _searchController.clear();
+              },
+              child: const Icon(Icons.cancel)
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _filterEventsByQuery(_searchController.text);
+                _searchController.clear(); // Wyczyść pole
+              },
+              child: const Icon(Icons.search),
+            ),
 
-            ],
-          );
-        }
+          ],
+        );
+      }
     );
   }
 
@@ -252,14 +242,14 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  CreateEventPage(
-                      onEventCreated: (newEvent) {
-                        setState(() {
-                          _events.add(newEvent);
-                          // _filteredEvents = widget.events;
-                        });
-                      }
-                  ),
+                CreateEventPage(
+                  onEventCreated: (newEvent) {
+                    setState(() {
+                      _events.add(newEvent);
+                      // _filteredEvents = widget.events;
+                    });
+                  }
+                ),
             ),
           );
           break;
