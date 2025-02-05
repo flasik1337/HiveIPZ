@@ -9,40 +9,8 @@ import 'pages/settings_page.dart';
 import 'pages/password_reset_page.dart';
 import 'models/event.dart';
 
-// Przykładowe wydarzenia testowe
-List<Event> testEvents = [
-  // Event(
-  //   id: "0",
-  //   name: "Trening z Pudzianem",
-  //   location: "Szczecin, siłownia ZUT",
-  //   type: 'Warsztaty',
-  //   startDate: DateTime(2025, 2, 14, 18, 0),
-  //   maxParticipants: -1,
-  //   registeredParticipants: 10,
-  //   imagePath: "assets/pudzian0.jpg",
-  // ),
-  // Event(
-  //   id: "1",
-  //   name: "Walka z Pudzianem",
-  //   location: "Blok 12, osiedle Kaliny",
-  //   type: 'Sportowe',
-  //   startDate: DateTime(2025, 1, 29, 19, 30),
-  //   maxParticipants: 1,
-  //   registeredParticipants: 0,
-  //   imagePath: "assets/pudzian1.jpg",
-  // ),
-  // Event(
-  //   id: "2",
-  //   name: "Przejażdżka z Pudzianem",
-  //   location: "Szczecin, Jezioro Głębokie",
-  //   type: 'Motoryzacyjne',
-  //   startDate: DateTime(2025, 1, 21),
-  //   maxParticipants: 3,
-  //   registeredParticipants: 1,
-  //   imagePath: "assets/pudzian2.jpg",
-  // ),
-];
-
+// Inicjalizacja listy eventów, na której działa cała aplikacja
+List<Event> initialEvents = [];
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,8 +29,6 @@ void main() async {
       errorMessage = 'Sesja wygasła, zaloguj się ponownie.';
     }
   }
-
-
 
   runApp(MyApp(
     initialRoute: token != null ? '/home' : '/sign_in',
@@ -87,9 +53,9 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: initialRoute,
       routes: {
-        '/sign_in': (context) => SignInPage(events: testEvents, errorMessage: errorMessage),
+        '/sign_in': (context) => SignInPage(events: initialEvents, errorMessage: errorMessage),
         '/register': (context) => RegisterPage(),
-        '/home': (context) => HomePage(events: testEvents),
+        '/home': (context) => HomePage(events: initialEvents),
         '/account': (context) => ProfilePage(),
         '/settings': (context) => SettingsPage(),
         '/change_password': (context) => PasswordResetPage(),
