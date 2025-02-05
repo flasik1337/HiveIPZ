@@ -250,7 +250,7 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Nazwa'),
+                const Text('Login'),
                 Text(userData!['nickName'] ?? 'Nie ustawiono'),
               ],
             ),

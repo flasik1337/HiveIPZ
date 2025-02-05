@@ -152,14 +152,13 @@ class DatabaseHelper {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(eventData),
     );
-
     if (response.statusCode == 201) {
       print('Wydarzenie dodane pomyślnie');
     } else {
-      final error = jsonDecode(response.body)['error'];
-      throw Exception(error);
+      throw Exception(jsonDecode(response.body)['error']);
     }
-  }
+}
+
 
   // Aktualizowanie wydarzeń
   static Future<void> updateEvent(String id, Map<String, dynamic> eventData) async {

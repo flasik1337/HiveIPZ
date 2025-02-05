@@ -27,6 +27,7 @@ class _EditEventPageState extends State<EditEventPage> {
   late TextEditingController maxParticipantsController;
   late String _typeController;
   late DateTime _dateController;
+  late TextEditingController _cenaController;
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _EditEventPageState extends State<EditEventPage> {
     locationController = TextEditingController(text: widget.event.location);
     _descriptionController = TextEditingController(text: widget.event.description);
     _typeController = widget.event.type;
+    _cenaController = TextEditingController(text: widget.event.cena.toString());
     _dateController = widget.event.startDate;
     maxParticipantsController = widget.event.maxParticipants != -1 ?
       TextEditingController(text: widget.event.maxParticipants.toString()) :
@@ -61,6 +63,41 @@ class _EditEventPageState extends State<EditEventPage> {
     }
   }
 
+  Future<bool> _showDeleteEventDialog(BuildContext context) async {
+    return await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+          title: const Text("Potwierdź usunięcie wydarzenia"),
+          content: const Text("Czy na pewno chcesz usunąć trwale wydarzenie? Tej operacji nie można cofnąć."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Anuluj'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Usuń',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          );
+        },
+    ) ?? false;
+  }
+
+  Future<void> _deleteEvent(BuildContext context, String eventId) async {
+    final shouldDelete = await _showDeleteEventDialog(context);
+    if (shouldDelete) {
+      DatabaseHelper.deleteEvent(eventId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wydarzenie zostało usunięte')),
+      );
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,6 +117,11 @@ class _EditEventPageState extends State<EditEventPage> {
             TextField(
               controller: _descriptionController,
               decoration: const InputDecoration(labelText: 'Opis'),
+            ),
+            TextFormField(
+              controller: _cenaController,
+              decoration: const InputDecoration(labelText: 'Cena wejścia (zł)'),
+              keyboardType: TextInputType.number,
             ),
             TextButton(
               onPressed: () => _openTypeSelector(context),
@@ -127,10 +169,19 @@ class _EditEventPageState extends State<EditEventPage> {
                   _typeController,
                   _dateController,
                   int.tryParse(maxParticipantsController.text) ?? -1,
+                  double.tryParse(_cenaController.text) ?? 0.0,
                   );
               },
               child: const Text('Zapisz zmiany'),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _deleteEvent(context, widget.event.id),
+              child: const Text("Usuń wydarzenie"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+            )
           ],
         ),
       ),
@@ -138,7 +189,7 @@ class _EditEventPageState extends State<EditEventPage> {
   }
 
   Future<void> _saveChanges(BuildContext context, String name, String location,
-      String description, String type, DateTime date, int maxParticipants) async {
+      String description, String type, DateTime date, int maxParticipants, double cena) async {
     final updatedEvent = Event(
       id: widget.event.id,
       //id pozostaje bez zmian
@@ -151,6 +202,9 @@ class _EditEventPageState extends State<EditEventPage> {
       registeredParticipants: widget.event.registeredParticipants,
       imagePath: widget.event.imagePath, //?TODO: zmiana obrazu?
       //nazwa organizatora
+      cena: cena,
+      
+      
     );
 
     try {
@@ -163,6 +217,7 @@ class _EditEventPageState extends State<EditEventPage> {
         'max_participants':maxParticipants,
         'registered_participants': widget.event.registeredParticipants,
         'image': widget.event.imagePath,
+        'cena': cena,
       };
       await DatabaseHelper.updateEvent(widget.event.id, eventData);
       ScaffoldMessenger.of(context).showSnackBar(
