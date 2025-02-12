@@ -16,7 +16,7 @@ class CreateEventPage extends StatefulWidget {
 }
 
 class _CreateEventPageState extends State<CreateEventPage> {
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -53,7 +53,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   Future<void> _submitEvent() async {
-    if (_formKey.currentState!.validate()) {
+    if (formKey.currentState!.validate()) {
       try {
         // tworzymy mapę z danymi wydarzenia
         final eventData = {
@@ -176,7 +176,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey,
+          key: formKey,
           child: Column(
             children: [
               GestureDetector(

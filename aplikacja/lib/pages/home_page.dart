@@ -20,7 +20,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Event> _events = [];
+  List<Event> events = [];
   int _selectedFromBottomBar = 0;
   final TextEditingController _searchController = TextEditingController();
 
@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final eventsData = await DatabaseHelper.getAllEvents();
       setState(() {
-        _events = eventsData.map((data) => Event.fromJson(data)).toList();
+        events = eventsData.map((data) => Event.fromJson(data)).toList();
       });
     } catch (e) {
       print('Błąd podczas pobierania danych wydarzeń: $e');
@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     // Filtracja wydarzeń
-    final filteredEvents = _events
+    final filteredEvents = events
         .where((event) =>
     event.name.toLowerCase().contains(query.toLowerCase()) ||
         event.location.toLowerCase().contains(query.toLowerCase()))
@@ -112,9 +112,9 @@ class _HomePageState extends State<HomePage> {
             onUpdate: (updatedEvent) {
               setState(() {
                 final index =
-                _events.indexWhere((event) => event.id == updatedEvent.id);
+                events.indexWhere((event) => event.id == updatedEvent.id);
                 if (index != -1) {
-                  _events[index] = updatedEvent;
+                  events[index] = updatedEvent;
                 }
               });
             },
@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
 
 
   void _filterEventsByType(String typeFilter, String query) {
-    final filteredEvents = _events
+    final filteredEvents = events
         .where((event) =>
         event.type.toLowerCase().contains(typeFilter.toLowerCase()))
         .toList();
@@ -158,7 +158,7 @@ class _HomePageState extends State<HomePage> {
 
 
   void _filterEventsByDate(DateTime dateFilter, String query) {
-    final filteredEvents = _events
+    final filteredEvents = events
         .where((event) =>
     event.startDate.year == dateFilter.year &&
         event.startDate.month == dateFilter.month &&
@@ -245,7 +245,7 @@ class _HomePageState extends State<HomePage> {
                 CreateEventPage(
                   onEventCreated: (newEvent) {
                     setState(() {
-                      _events.add(newEvent);
+                      events.add(newEvent);
                       // _filteredEvents = widget.events;
                     });
                   }
@@ -326,7 +326,7 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Strona Główna'),
         centerTitle: true, // Wyśrodkowanie tytułu
       ),
-      body: _events.isEmpty
+      body: events.isEmpty
           ? const Center(
         child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
       )
@@ -334,14 +334,14 @@ class _HomePageState extends State<HomePage> {
         onRefresh: _fetchAllEvents, // Funkcja do odświeżania
         child: PageView.builder(
           scrollDirection: Axis.vertical,
-          itemCount: _events.length, // Liczba wydarzeń
+          itemCount: events.length, // Liczba wydarzeń
           itemBuilder: (context, index) {
-            final event = _events[index]; // Pobranie konkretnego wydarzenia
+            final event = events[index]; // Pobranie konkretnego wydarzenia
             return EventCard(
               event: event,
               onUpdate: (updatedEvent) {
                 setState(() {
-                  _events[index] = updatedEvent; // Aktualizacja wydarzenia
+                  events[index] = updatedEvent; // Aktualizacja wydarzenia
                 });
               },
             );

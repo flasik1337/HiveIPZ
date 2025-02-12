@@ -15,7 +15,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Map<String, dynamic>? userData;
   int? userId;
   final TextEditingController _passwordController = TextEditingController();
-  bool _showPasswordField = false;
+  bool showPasswordField = false;
 
   @override
   void initState() {
@@ -271,7 +271,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
             child: const Text('Zmień hasło')),
           Divider(),
-          if (_showPasswordField) ...[
+          if (showPasswordField) ...[
             TextField(
               controller: _passwordController,
               obscureText: true,
@@ -289,7 +289,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  _showPasswordField = true;
+                  showPasswordField = true;
                 });
               },
               child: const Text('Usuń konto'),

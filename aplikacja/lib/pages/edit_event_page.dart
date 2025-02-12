@@ -16,10 +16,10 @@ class EditEventPage extends StatefulWidget {
 }
 
 class _EditEventPageState extends State<EditEventPage> {
-  late TextEditingController nameController;
-  late TextEditingController locationController;
+  late TextEditingController _nameController;
+  late TextEditingController _locationController;
   late TextEditingController _descriptionController;
-  late TextEditingController maxParticipantsController;
+  late TextEditingController _maxParticipantsController;
   late String _typeController;
   late DateTime _dateController;
   late TextEditingController _cenaController;
@@ -27,13 +27,13 @@ class _EditEventPageState extends State<EditEventPage> {
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.event.name);
-    locationController = TextEditingController(text: widget.event.location);
+    _nameController = TextEditingController(text: widget.event.name);
+    _locationController = TextEditingController(text: widget.event.location);
     _descriptionController = TextEditingController(text: widget.event.description);
     _typeController = widget.event.type;
     _cenaController = TextEditingController(text: widget.event.cena.toString());
     _dateController = widget.event.startDate;
-    maxParticipantsController = widget.event.maxParticipants != -1 ?
+    _maxParticipantsController = widget.event.maxParticipants != -1 ?
       TextEditingController(text: widget.event.maxParticipants.toString()) :
       TextEditingController(text: "");
   }
@@ -101,11 +101,11 @@ class _EditEventPageState extends State<EditEventPage> {
         child: Column(
           children: [
             TextField(
-              controller: nameController,
+              controller: _nameController,
               decoration: const InputDecoration(labelText: 'Nazwa wydarzenia'),
             ),
             TextField(
-              controller: locationController,
+              controller: _locationController,
               decoration: const InputDecoration(labelText: 'Lokalizacja'),
             ),
             TextField(
@@ -142,7 +142,7 @@ class _EditEventPageState extends State<EditEventPage> {
               ),
             ),
             TextFormField(
-                controller: maxParticipantsController,
+                controller: _maxParticipantsController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Maksymalna liczba uczestników'),
                 validator: (newMaxParticipants) {
@@ -159,12 +159,12 @@ class _EditEventPageState extends State<EditEventPage> {
                 // zapis danych
                 _saveChanges(
                   context,
-                  nameController.text,
-                  locationController.text,
+                  _nameController.text,
+                  _locationController.text,
                   _descriptionController.text,
                   _typeController,
                   _dateController,
-                  int.tryParse(maxParticipantsController.text) ?? -1,
+                  int.tryParse(_maxParticipantsController.text) ?? -1,
                   double.tryParse(_cenaController.text) ?? 0.0,
                   );
               },

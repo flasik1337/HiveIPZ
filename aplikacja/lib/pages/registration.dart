@@ -10,7 +10,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _ageController = TextEditingController();
@@ -22,7 +22,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
 
   Future<void> _register() async {
-    if (_formKey.currentState!.validate()) {
+    if (formKey.currentState!.validate()) {
       final name = _nameController.text;
       final surname = _surnameController.text;
       final age = int.tryParse(_ageController.text) ?? 0;
@@ -55,7 +55,7 @@ class _RegisterPageState extends State<RegisterPage> {
         title: const Text('Rejestracja'),
       ),
       body: Form(
-        key: _formKey,
+        key: formKey,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
