@@ -1,5 +1,4 @@
 import 'package:Hive/widgets/event_type_grid.dart';
-import 'package:Hive/pages/event_page.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/event.dart';
@@ -9,7 +8,7 @@ import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
 
 
-
+/// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
   final List<Event> events;
 
@@ -21,7 +20,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Event> _events = [];
+  List<Event> events = [];
   int _selectedFromBottomBar = 0;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _bottomCenaController = TextEditingController();
@@ -39,16 +38,13 @@ class _HomePageState extends State<HomePage> {
     try {
       final eventsData = await DatabaseHelper.getAllEvents();
       setState(() {
-        _events = eventsData.map((data) => Event.fromJson(data)).toList();
+        events = eventsData.map((data) => Event.fromJson(data)).toList();
       });
     } catch (e) {
       print('Błąd podczas pobierania danych wydarzeń: $e');
     }
   }
 
-  /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
-  /// args:
-  ///   String query: hasło kluczowe do wyszukania
   /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
   /// args:
   ///   String query: hasło kluczowe do wyszukania
@@ -81,14 +77,13 @@ class _HomePageState extends State<HomePage> {
     }
 
     // Filtracja wydarzeń
-    final filteredEvents = _events
+    final filteredEvents = events
         .where((event) =>
     event.name.toLowerCase().contains(query.toLowerCase()) ||
         event.location.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -111,36 +106,34 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    print('Debug: Liczba znalezionych wydarzeń = ${filteredEvents.length}');
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            FilteredPage(
-              filteredEvents: filteredEvents,
-              onUpdate: (updatedEvent) {
-                setState(() {
-                  final index =
-                  _events.indexWhere((event) => event.id == updatedEvent.id);
-                  if (index != -1) {
-                    _events[index] = updatedEvent;
-                  }
-                });
-              },
-            ),
+          FilteredPage(
+            filteredEvents: filteredEvents,
+            onUpdate: (updatedEvent) {
+              setState(() {
+                final index =
+                events.indexWhere((event) => event.id == updatedEvent.id);
+                if (index != -1) {
+                  events[index] = updatedEvent;
+                }
+              });
+            },
+          ),
       ),
     );
   }
 
 
   void _filterEventsByType(String typeFilter, String query) {
-    final filteredEvents = _events
+    final filteredEvents = events
         .where((event) =>
         event.type.toLowerCase().contains(typeFilter.toLowerCase()))
         .toList();
 
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -184,16 +177,14 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-  void _filterEventsByCena(double cenaBottom, double cenaUp) {
-    print("DEBUG: funkjca sie odpala");
-    final filteredEvents = _events
+
+  void _filterEventsByDate(DateTime dateFilter, String query) {
+    final filteredEvents = events
         .where((event) =>
           event.cena <= cenaUp && event.cena >= cenaBottom && event.cena > 0.001)
         .toList();
 
-    print("DEBUG: funkjca sie filtruje");
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania.'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -235,6 +226,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 
 
     void _filterEventsByDate(DateTime dateFilter, String query) {
@@ -464,9 +456,48 @@ class _HomePageState extends State<HomePage> {
                           Navigator.pop(context);
                           _showCenaDialog();
                         }
-                      )
-                    ]
-                );
+                    )
+                  ]
+              );
+            },
+          );
+          break;
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfilePage(),
+            ),
+          );
+          break;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Strona Główna'),
+        centerTitle: true, // Wyśrodkowanie tytułu
+      ),
+      body: events.isEmpty
+          ? const Center(
+        child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
+      )
+          : RefreshIndicator(
+        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
+        child: PageView.builder(
+          scrollDirection: Axis.vertical,
+          itemCount: events.length, // Liczba wydarzeń
+          itemBuilder: (context, index) {
+            final event = events[index]; // Pobranie konkretnego wydarzenia
+            return EventCard(
+              event: event,
+              onUpdate: (updatedEvent) {
+                setState(() {
+                  events[index] = updatedEvent; // Aktualizacja wydarzenia
+                });
               },
             );
             break;
