@@ -22,7 +22,6 @@ class _EventPageState extends State<EventPage> {
   bool isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
   String? userId; // Przechowywanie userId
 
-
   @override
   void initState() {
     super.initState();
@@ -38,6 +37,11 @@ class _EventPageState extends State<EventPage> {
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
+  }
+  void _updateEvent(Event updatedEvent) {
+    setState(() {
+      _currentEvent = updatedEvent;
+    });
   }
 
   void _checkIfUserIsOwner() {
@@ -62,7 +66,6 @@ class _EventPageState extends State<EventPage> {
       }
     }
   }
-
 
   Future<void> _joinOrLeaveEvent() async {
     try {
@@ -137,10 +140,11 @@ class _EventPageState extends State<EventPage> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              '${currentEvent.location}  |  ${currentEvent
-                  .type}\n${currentEvent.startDate.day}.${currentEvent
-                  .startDate.month}.${currentEvent.startDate.year}',
-              style: HiveTextStyles.regular,
+              '${_currentEvent.location}  |  ${_currentEvent.type}\n${_currentEvent.startDate.day}.${_currentEvent.startDate.month}.${_currentEvent.startDate.year}',
+              style: const TextStyle(
+                fontSize: 20,
+                color: Colors.white,
+              ),
             ),
           ),
           Padding(
@@ -169,6 +173,7 @@ class _EventPageState extends State<EventPage> {
               style: HiveTextStyles.regular,
             ),
           ),
+
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
             Padding(
@@ -176,29 +181,33 @@ class _EventPageState extends State<EventPage> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
-                    context, MaterialPageRoute(
+                    context,
+                    MaterialPageRoute(
                       builder: (context) => EditEventPage(
-                          event: currentEvent,
-                          onSave: (updatedEvent) {
-                            setState(() {
-                              currentEvent = updatedEvent;
-                            });
-                          })
-                  ),
+                        event: _currentEvent,
+                        onSave: (updatedEvent) {
+                          setState(() {
+                            _currentEvent = updatedEvent;
+                          });
+                        },
+                      ),
+                    ),
                   );
                 },
                 child: const Text('Edytuj wydarzenie'),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              onPressed: () {
-                _joinOrLeaveEvent();
-              },
-              child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+          // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
+          if (!_isUserOwner)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ElevatedButton(
+                onPressed: () {
+                  _joinOrLeaveEvent();
+                },
+                child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+              ),
             ),
-          ),
         ],
       ),
     );
