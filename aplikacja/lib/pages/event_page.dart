@@ -20,7 +20,6 @@ class _EventPageState extends State<EventPage> {
   bool _isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
   String? _userId; // Przechowywanie userId
 
-
   @override
   void initState() {
     super.initState();
@@ -38,6 +37,7 @@ class _EventPageState extends State<EventPage> {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
   }
+
   void _updateEvent(Event updatedEvent) {
     setState(() {
       _currentEvent = updatedEvent;
@@ -68,7 +68,6 @@ class _EventPageState extends State<EventPage> {
       }
     }
   }
-
 
   Future<void> _joinOrLeaveEvent() async {
     try {
@@ -147,9 +146,7 @@ class _EventPageState extends State<EventPage> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              '${_currentEvent.location}  |  ${_currentEvent
-                  .type}\n${_currentEvent.startDate.day}.${_currentEvent
-                  .startDate.month}.${_currentEvent.startDate.year}',
+              '${_currentEvent.location}  |  ${_currentEvent.type}\n${_currentEvent.startDate.day}.${_currentEvent.startDate.month}.${_currentEvent.startDate.year}',
               style: const TextStyle(
                 fontSize: 20,
                 color: Colors.white,
@@ -188,6 +185,7 @@ class _EventPageState extends State<EventPage> {
               ),
             ),
           ),
+
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (_isUserOwner)
             Padding(
@@ -195,29 +193,33 @@ class _EventPageState extends State<EventPage> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
-                    context, MaterialPageRoute(
+                    context,
+                    MaterialPageRoute(
                       builder: (context) => EditEventPage(
-                          event: _currentEvent,
-                          onSave: (updatedEvent) {
-                            setState(() {
-                              _currentEvent = updatedEvent;
-                            });
-                          })
-                  ),
+                        event: _currentEvent,
+                        onSave: (updatedEvent) {
+                          setState(() {
+                            _currentEvent = updatedEvent;
+                          });
+                        },
+                      ),
+                    ),
                   );
                 },
                 child: const Text('Edytuj wydarzenie'),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              onPressed: () {
-                _joinOrLeaveEvent();
-              },
-              child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+          // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
+          if (!_isUserOwner)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ElevatedButton(
+                onPressed: () {
+                  _joinOrLeaveEvent();
+                },
+                child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+              ),
             ),
-          ),
         ],
       ),
     );

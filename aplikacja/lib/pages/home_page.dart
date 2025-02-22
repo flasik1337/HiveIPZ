@@ -24,6 +24,9 @@ class _HomePageState extends State<HomePage> {
   List<Event> _events = [];
   int _selectedFromBottomBar = 0;
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _bottomCenaController = TextEditingController();
+  final TextEditingController _upCenaController = TextEditingController();
+
 
   @override
   void initState() {
@@ -159,21 +162,38 @@ class _HomePageState extends State<HomePage> {
       );
       return;
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            FilteredPage(
+              filteredEvents: filteredEvents,
+              onUpdate: (updatedEvent) {
+                setState(() {
+                  final index =
+                  _events.indexWhere((event) => event.id == updatedEvent.id);
+                  if (index != -1) {
+                    _events[index] = updatedEvent;
+                  }
+                });
+              },
+            ),
+      ),
+    );
   }
 
 
-
-
-  void _filterEventsByDate(DateTime dateFilter, String query) {
+  void _filterEventsByCena(double cenaBottom, double cenaUp) {
+    print("DEBUG: funkjca sie odpala");
     final filteredEvents = _events
         .where((event) =>
-    event.startDate.year == dateFilter.year &&
-        event.startDate.month == dateFilter.month &&
-        event.startDate.day == dateFilter.day)
+          event.cena <= cenaUp && event.cena >= cenaBottom && event.cena > 0.001)
         .toList();
 
+    print("DEBUG: funkjca sie filtruje");
     if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
+      print('Debug: Brak wyników wyszukiwania.'); // Debugowanie
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -195,198 +215,331 @@ class _HomePageState extends State<HomePage> {
       );
       return;
     }
-  }
 
-  /// Otwieranie okna dialogowego z wyszukiwaniem
-  void _showSearchDialog({bool onlyLocation = false}) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Wyszukiwanie wydarzeń'),
-            content: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: onlyLocation
-                    ? 'Wprowadź lokalizację'
-                    : 'Wprowadź nazwę lub lokalizację',
-              ),
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _searchController.clear();
-                  },
-                  child: const Icon(Icons.cancel)
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  print('Debug: Wartość w polu wyszukiwania: ${_searchController
-                      .text}'); // Debugowanie
-                  _filterEventsByQuery(_searchController.text);
-                  _searchController.clear(); // Wyczyść pole
-                },
-                child: const Icon(Icons.search),
-              ),
-
-            ],
-          );
-        }
-    );
-  }
-
-  /// Obsługa NavigationBara na dole ekranu
-  /// args:
-  ///   int index: wybrany przycisk
-  void _onBarTapped(int index) {
-    setState(() {
-      _selectedFromBottomBar = index;
-      switch (_selectedFromBottomBar) {
-        case 0:
-          _showSearchDialog();
-          break;
-        case 1:
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  CreateEventPage(
-                      onEventCreated: (newEvent) {
-                        setState(() {
-                          _events.add(newEvent);
-                          // _filteredEvents = widget.events;
-                        });
-                      }
-                  ),
-            ),
-          );
-          break;
-        case 2:
-          showModalBottomSheet(
-            context: context,
-            builder: (context) {
-              return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Filtruj po:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ListTile(
-                        title: const Text('Typ wydarzenia'),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          showModalBottomSheet(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return EventTypeGrid(
-                                    onEventTypeSelected: (String typeFilter) {
-                                      _filterEventsByType(typeFilter, "");
-                                    });
-                              });
-                        }
-                    ),
-                    ListTile(
-                        title: const Text('Data'),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100),
-                          );
-                          if (pickedDate != null) {
-                            _filterEventsByDate(pickedDate, "");
-                          }
-                        }
-                    ),
-                    ListTile(
-                        title: const Text('Lokalizacja'),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          _showSearchDialog(onlyLocation: true);
-                        }
-                    )
-                  ]
-              );
-            },
-          );
-          break;
-        case 3:
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfilePage(),
-            ),
-          );
-          break;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Strona Główna'),
-        centerTitle: true, // Wyśrodkowanie tytułu
-      ),
-      body: _events.isEmpty
-          ? const Center(
-        child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
-        child: PageView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: _events.length, // Liczba wydarzeń
-          itemBuilder: (context, index) {
-            final event = _events[index]; // Pobranie konkretnego wydarzenia
-            return EventCard(
-              event: event,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            FilteredPage(
+              filteredEvents: filteredEvents,
               onUpdate: (updatedEvent) {
                 setState(() {
-                  _events[index] = updatedEvent; // Aktualizacja wydarzenia
+                  final index =
+                  _events.indexWhere((event) => event.id == updatedEvent.id);
+                  if (index != -1) {
+                    _events[index] = updatedEvent;
+                  }
                 });
               },
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        elevation: 0,
-        enableFeedback: false,
-        backgroundColor: Colors.black54,
-        currentIndex: _selectedFromBottomBar,
-        onTap: _onBarTapped,
-        showUnselectedLabels: false,
-        showSelectedLabels: false,
-        selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'dołącz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.filter_alt_outlined),
-            label: 'filtruj',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'profil',
-          ),
-        ],
+            ),
       ),
     );
   }
-}
+
+
+    void _filterEventsByDate(DateTime dateFilter, String query) {
+      final filteredEvents = _events
+          .where((event) =>
+      event.startDate.year == dateFilter.year &&
+          event.startDate.month == dateFilter.month &&
+          event.startDate.day == dateFilter.day)
+          .toList();
+
+      if (filteredEvents.isEmpty) {
+        print('Debug: Brak wyników wyszukiwania dla "$query"'); // Debugowanie
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text(
+                'Nie znaleziono żadnych wydarzeń.',
+                textAlign: TextAlign.center,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Icon(Icons.cancel, color: Colors.red),
+                ),
+              ],
+            );
+          },
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              FilteredPage(
+                filteredEvents: filteredEvents,
+                onUpdate: (updatedEvent) {
+                  setState(() {
+                    final index =
+                    _events.indexWhere((event) => event.id == updatedEvent.id);
+                    if (index != -1) {
+                      _events[index] = updatedEvent;
+                    }
+                  });
+                },
+              ),
+        ),
+      );
+    }
+
+    void _showCenaDialog() {
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Podaj przedział cenowy'),
+              content: Column(
+                children: [
+                  TextField(
+                    controller: _bottomCenaController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'Podaj dolną granicę'
+                    ),
+                  ),
+                  TextField(
+                    controller: _upCenaController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'Podaj górną granicę'
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _searchController.clear();
+                    },
+                    child: const Icon(Icons.cancel)
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    double bottom = _bottomCenaController.text == "" ? 0.0 : double.parse(_bottomCenaController.text);
+                    double up = _upCenaController.text == "" ? double.infinity : double.parse(_upCenaController.text);
+                    if (double.parse(_upCenaController.text) < double.parse(_bottomCenaController.text)) {
+                      bottom = double.parse(_upCenaController.text);
+                      up = double.parse(_bottomCenaController.text);
+                    }
+                    _filterEventsByCena(bottom, up);
+                    _bottomCenaController.clear();
+                    _upCenaController.clear();// Wyczyść pole
+                  },
+                  child: const Icon(Icons.search),
+                ),
+              ]
+            );
+          }
+        );
+    }
+
+    /// Otwieranie okna dialogowego z wyszukiwaniem
+    void _showSearchDialog({bool onlyLocation = false}) {
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Wyszukiwanie wydarzeń'),
+              content: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: onlyLocation
+                      ? 'Wprowadź lokalizację'
+                      : 'Wprowadź nazwę lub lokalizację',
+                ),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _searchController.clear();
+                    },
+                    child: const Icon(Icons.cancel)
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    print(
+                        'Debug: Wartość w polu wyszukiwania: ${_searchController
+                            .text}'); // Debugowanie
+                    _filterEventsByQuery(_searchController.text);
+                    _searchController.clear(); // Wyczyść pole
+                  },
+                  child: const Icon(Icons.search),
+                ),
+
+              ],
+            );
+          }
+      );
+    }
+
+    /// Obsługa NavigationBara na dole ekranu
+    /// args:
+    ///   int index: wybrany przycisk
+    void _onBarTapped(int index) {
+      setState(() {
+        _selectedFromBottomBar = index;
+        switch (_selectedFromBottomBar) {
+          case 0:
+            _showSearchDialog();
+            break;
+          case 1:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    CreateEventPage(
+                        onEventCreated: (newEvent) {
+                          setState(() {
+                            _events.add(newEvent);
+                            // _filteredEvents = widget.events;
+                          });
+                        }
+                    ),
+              ),
+            );
+            break;
+          case 2:
+            showModalBottomSheet(
+              context: context,
+              builder: (context) {
+                return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Filtruj po:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ListTile(
+                          title: const Text('Typ wydarzenia'),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            showModalBottomSheet(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return EventTypeGrid(
+                                      onEventTypeSelected: (String typeFilter) {
+                                        _filterEventsByType(typeFilter, "");
+                                      });
+                                });
+                          }
+                      ),
+                      ListTile(
+                          title: const Text('Data'),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100),
+                            );
+                            if (pickedDate != null) {
+                              _filterEventsByDate(pickedDate, "");
+                            }
+                          }
+                      ),
+                      ListTile(
+                          title: const Text('Lokalizacja'),
+                          onTap: () async {
+                            Navigator.pop(context);
+                            _showSearchDialog(onlyLocation: true);
+                          }
+                      ),
+                      ListTile(
+                        title: const Text('Cena'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          _showCenaDialog();
+                        }
+                      )
+                    ]
+                );
+              },
+            );
+            break;
+          case 3:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfilePage(),
+              ),
+            );
+            break;
+        }
+      });
+    }
+
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Strona Główna'),
+          centerTitle: true, // Wyśrodkowanie tytułu
+        ),
+        body: _events.isEmpty
+            ? const Center(
+          child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
+        )
+            : RefreshIndicator(
+          onRefresh: _fetchAllEvents, // Funkcja do odświeżania
+          child: PageView.builder(
+            scrollDirection: Axis.vertical,
+            itemCount: _events.length, // Liczba wydarzeń
+            itemBuilder: (context, index) {
+              final event = _events[index]; // Pobranie konkretnego wydarzenia
+              return EventCard(
+                event: event,
+                onUpdate: (updatedEvent) {
+                  setState(() {
+                    _events[index] = updatedEvent; // Aktualizacja wydarzenia
+                  });
+                },
+              );
+            },
+          ),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          elevation: 0,
+          enableFeedback: false,
+          backgroundColor: Colors.black54,
+          currentIndex: _selectedFromBottomBar,
+          onTap: _onBarTapped,
+          showUnselectedLabels: false,
+          showSelectedLabels: false,
+          selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
+          unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search),
+              label: 'search',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.add),
+              label: 'dołącz',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.filter_alt_outlined),
+              label: 'filtruj',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'profil',
+            ),
+          ],
+        ),
+      );
+    }
+  }
