@@ -165,9 +165,9 @@ class _HomePageState extends State<HomePage> {
               onUpdate: (updatedEvent) {
                 setState(() {
                   final index =
-                  _events.indexWhere((event) => event.id == updatedEvent.id);
+                  events.indexWhere((event) => event.id == updatedEvent.id);
                   if (index != -1) {
-                    _events[index] = updatedEvent;
+                    events[index] = updatedEvent;
                   }
                 });
               },
@@ -178,10 +178,10 @@ class _HomePageState extends State<HomePage> {
 
 
 
-  void _filterEventsByDate(DateTime dateFilter, String query) {
+  void _filterEventsByPrice(double priceUp, double priceBottom) {
     final filteredEvents = events
         .where((event) =>
-          event.cena <= cenaUp && event.cena >= cenaBottom && event.cena > 0.001)
+          event.cena <= priceUp && event.cena >= priceBottom)
         .toList();
 
     if (filteredEvents.isEmpty) {
@@ -216,9 +216,9 @@ class _HomePageState extends State<HomePage> {
               onUpdate: (updatedEvent) {
                 setState(() {
                   final index =
-                  _events.indexWhere((event) => event.id == updatedEvent.id);
+                  events.indexWhere((event) => event.id == updatedEvent.id);
                   if (index != -1) {
-                    _events[index] = updatedEvent;
+                    events[index] = updatedEvent;
                   }
                 });
               },
@@ -230,7 +230,7 @@ class _HomePageState extends State<HomePage> {
 
 
     void _filterEventsByDate(DateTime dateFilter, String query) {
-      final filteredEvents = _events
+      final filteredEvents = events
           .where((event) =>
       event.startDate.year == dateFilter.year &&
           event.startDate.month == dateFilter.month &&
@@ -270,9 +270,9 @@ class _HomePageState extends State<HomePage> {
                 onUpdate: (updatedEvent) {
                   setState(() {
                     final index =
-                    _events.indexWhere((event) => event.id == updatedEvent.id);
+                    events.indexWhere((event) => event.id == updatedEvent.id);
                     if (index != -1) {
-                      _events[index] = updatedEvent;
+                      events[index] = updatedEvent;
                     }
                   });
                 },
@@ -322,7 +322,7 @@ class _HomePageState extends State<HomePage> {
                       bottom = double.parse(_upCenaController.text);
                       up = double.parse(_bottomCenaController.text);
                     }
-                    _filterEventsByCena(bottom, up);
+                    _filterEventsByPrice(bottom, up);
                     _bottomCenaController.clear();
                     _upCenaController.clear();// Wyczyść pole
                   },
@@ -393,7 +393,7 @@ class _HomePageState extends State<HomePage> {
                     CreateEventPage(
                         onEventCreated: (newEvent) {
                           setState(() {
-                            _events.add(newEvent);
+                            events.add(newEvent);
                             // _filteredEvents = widget.events;
                           });
                         }
@@ -474,44 +474,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Strona Główna'),
-        centerTitle: true, // Wyśrodkowanie tytułu
-      ),
-      body: events.isEmpty
-          ? const Center(
-        child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
-        child: PageView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: events.length, // Liczba wydarzeń
-          itemBuilder: (context, index) {
-            final event = events[index]; // Pobranie konkretnego wydarzenia
-            return EventCard(
-              event: event,
-              onUpdate: (updatedEvent) {
-                setState(() {
-                  events[index] = updatedEvent; // Aktualizacja wydarzenia
-                });
-              },
-            );
-            break;
-          case 3:
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ProfilePage(),
-              ),
-            );
-            break;
-        }
-      });
-    }
 
     @override
     Widget build(BuildContext context) {
@@ -520,7 +482,7 @@ class _HomePageState extends State<HomePage> {
           title: const Text('Strona Główna'),
           centerTitle: true, // Wyśrodkowanie tytułu
         ),
-        body: _events.isEmpty
+        body: events.isEmpty
             ? const Center(
           child: CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
         )
@@ -528,14 +490,14 @@ class _HomePageState extends State<HomePage> {
           onRefresh: _fetchAllEvents, // Funkcja do odświeżania
           child: PageView.builder(
             scrollDirection: Axis.vertical,
-            itemCount: _events.length, // Liczba wydarzeń
+            itemCount: events.length, // Liczba wydarzeń
             itemBuilder: (context, index) {
-              final event = _events[index]; // Pobranie konkretnego wydarzenia
+              final event = events[index]; // Pobranie konkretnego wydarzenia
               return EventCard(
                 event: event,
                 onUpdate: (updatedEvent) {
                   setState(() {
-                    _events[index] = updatedEvent; // Aktualizacja wydarzenia
+                    events[index] = updatedEvent; // Aktualizacja wydarzenia
                   });
                 },
               );
