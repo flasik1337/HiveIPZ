@@ -112,25 +112,22 @@ class _SignInPageState extends State<SignInPage> {
               child: TextField(
                 controller: _passwordController,
                 obscureText: !_showPassword,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
                   labelText: 'Hasło',
+                  suffixIcon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: GestureDetector(
+                      key: ValueKey(_showPassword),
+                      onTap: () => setState(() => _showPassword = !_showPassword),
+                      child: Icon(
+                        _showPassword ? Icons.visibility_off : Icons.visibility,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _showPassword,
-                  onChanged: (value) {
-                    setState(() {
-                      _showPassword = value!;
-                    });
-                  }
-                ),
-                const Text("Pokaż hasło")
-              ]
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 5.0),
