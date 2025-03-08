@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://212.127.78.92:5000';
+  // 'http://212.127.78.92:5000';
+  static const String link = 'https://vps.jakosinski.pl:5000';
 
   static Future<void> addUser(
       String name,
@@ -35,6 +37,7 @@ class DatabaseHelper {
     }
   }
 
+  //TODO: Dodać po stronie serwera Regexa na @, zablokować możliwość rejestracji ze znakami specjalnymi typu '@'
   static Future<Map<String, dynamic>?> getUser(
       //String email, String password) async {
         String nickName, String password) async {
