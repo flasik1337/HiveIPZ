@@ -103,6 +103,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     if (value == null || value.isEmpty) {
                       return 'Wprowadź nazwę użytkownika';
                     }
+                    if (value.contains('@')){
+                      return 'Nazwa nie może zawierać znaku @';
+                    }
                     return null;
                   },
                 ),
