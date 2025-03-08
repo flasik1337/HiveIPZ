@@ -121,7 +121,7 @@ class _SignInPageState extends State<SignInPage> {
                       key: ValueKey(_showPassword),
                       onTap: () => setState(() => _showPassword = !_showPassword),
                       child: Icon(
-                        _showPassword ? Icons.visibility_off : Icons.visibility,
+                        _showPassword ? Icons.visibility : Icons.visibility_off,
                         color: Theme.of(context).primaryColor,
                       ),
                     ),
