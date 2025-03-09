@@ -11,6 +11,8 @@ from datetime import datetime
 import base64
 import socket
 import re # Obsługa regexa
+from datetime import timedelta # Obsługa czasu niekatywnosci
+
 
 load_dotenv()
 
@@ -162,15 +164,10 @@ def login():
         cursor = mydb.cursor(dictionary=True)
         column = 'email' if is_email else 'nickName'
 
-        # Logowanie typu logowania
-        print(f"[AUTH_TYPE] Rozpoznano: {'email' if is_email else 'nick'}")
-
         # Pobierz użytkownika z bazy
         sql = f"SELECT * FROM users WHERE {column} = %s"
         cursor.execute(sql, (login_input,))
         user = cursor.fetchone()
-
-        print(f"[USER_DATA] Znaleziony użytkownik: {user}")  # Loguj użytkownika
 
         if not user or user['password'] != password:
             return jsonify({'message': 'Nieprawidłowy login lub hasło'}), 401
@@ -186,6 +183,33 @@ def login():
             cursor.execute(update_sql, (token, login_input))
             mydb.commit()
 
+        user_id = user['id']
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        expires_at = (datetime.now() + timedelta(days=120)).strftime('%Y-%m-%d %H:%M:%S')  # Wygaśnięcie za 120 dni
+
+        # Sprawdź, czy rekord istnieje w users_info
+        check_sql = "SELECT userID FROM users_info WHERE userID = %s"
+        cursor.execute(check_sql, (user_id,))
+        existing_record = cursor.fetchone()
+
+        if existing_record:
+            # Jeżeli taki rekord instieje, aktualizuuemy go
+            update_info_sql = """
+                        UPDATE users_info
+                        SET last_login = %s, token_expires_at = %s
+                        WHERE userID = %s
+                    """
+            cursor.execute(update_info_sql, (current_time, expires_at, user_id))
+        else:
+            # Jeżeli go nie ma ^ tworzymy
+            insert_info_sql = """
+                        INSERT INTO users_info (userID, last_login, token_expires_at)
+                        VALUES (%s, %s, %s)
+                    """
+            cursor.execute(insert_info_sql, (user_id, current_time, expires_at))
+
+        mydb.commit()
+
         return jsonify({
             'message': 'Zalogowano pomyślnie',
             'user': {
@@ -196,6 +220,7 @@ def login():
             },
             'token': token
         }), 200
+
 
     except Exception as e:
         print(f"[SERVER_ERROR] {str(e)}")  # Logowanie błędów serwera
