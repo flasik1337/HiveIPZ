@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://212.127.78.92:5000';
+  // 'http://212.127.78.92:5000';
+  static const String link = 'https://vps.jakosinski.pl:5000';
 
   static Future<void> addUser(
       String name,
@@ -35,23 +37,25 @@ class DatabaseHelper {
     }
   }
 
+  //TODO: zablkować @ dla rejestracji nickName
   static Future<Map<String, dynamic>?> getUser(
-      //String email, String password) async {
-        String nickName, String password) async {
-    final url = Uri.parse('$link/login');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      //body: jsonEncode({'email': email, 'password': password}),
+      String nickName, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$link/login'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nickName': nickName, 'password': password}),
-    );
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['user'];
-    } else {
-      final error = jsonDecode(response.body)['message'];
-      throw Exception(error);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data; // Zwracamy CAŁY obiekt odpowiedzi
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Nieznany błąd');
+      }
+    } catch (e) {
+      throw Exception('Błąd połączenia: $e');
     }
   }
   // Update User by Patryk
