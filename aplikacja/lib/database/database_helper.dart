@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://212.127.78.92:5000';
+  static const String link = 'https://vps.jakosinski.pl:5000';
 
   static Future<void> addUser(
       String name,

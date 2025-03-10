@@ -324,7 +324,6 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
-<<<<<<< HEAD
           <option name="brand" value="samsung" />
           <option name="codename" value="gts9fe" />
           <option name="id" value="gts9fe" />
@@ -336,8 +335,6 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
-=======
->>>>>>> d76a5f00235c668b6d1f0d684a0dfd3ff2a8f375
           <option name="brand" value="google" />
           <option name="codename" value="husky" />
           <option name="id" value="husky" />
