@@ -40,7 +40,7 @@ class _EventPageState extends State<EventPage> {
   }
   void _updateEvent(Event updatedEvent) {
     setState(() {
-      _currentEvent = updatedEvent;
+      currentEvent = updatedEvent;
     });
   }
 
@@ -140,7 +140,7 @@ class _EventPageState extends State<EventPage> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              '${_currentEvent.location}  |  ${_currentEvent.type}\n${_currentEvent.startDate.day}.${_currentEvent.startDate.month}.${_currentEvent.startDate.year}',
+              '${currentEvent.location}  |  ${currentEvent.type}\n${currentEvent.startDate.day}.${currentEvent.startDate.month}.${currentEvent.startDate.year}',
               style: const TextStyle(
                 fontSize: 20,
                 color: Colors.white,
@@ -184,10 +184,10 @@ class _EventPageState extends State<EventPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => EditEventPage(
-                        event: _currentEvent,
+                        event: currentEvent,
                         onSave: (updatedEvent) {
                           setState(() {
-                            _currentEvent = updatedEvent;
+                            currentEvent = updatedEvent;
                           });
                         },
                       ),
@@ -198,14 +198,14 @@ class _EventPageState extends State<EventPage> {
               ),
             ),
           // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
-          if (!_isUserOwner)
+          if (!isUserOwner)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ElevatedButton(
                 onPressed: () {
                   _joinOrLeaveEvent();
                 },
-                child: Text(_isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+                child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
               ),
             ),
         ],
