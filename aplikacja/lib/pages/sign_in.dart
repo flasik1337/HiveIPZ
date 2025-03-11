@@ -1,16 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../database/database_helper.dart';
 import 'home_page.dart';
 import '../models/event.dart';
 import 'registration.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Obsługa sesji użytkownika
-import 'password_reset_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+
+/// Strona logowania
 class SignInPage extends StatefulWidget {
   final List<Event> events;
-  final String? errorMessage; // Dodano errorMessage
+  final String? errorMessage;
 
   const SignInPage({Key? key, required this.events, this.errorMessage}) : super(key: key);
 
@@ -37,14 +36,12 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Future<void> saveToken(String token) async {
-    print("Zapisuję token: $token"); // Debugowanie zapisu
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
-    print("Token zapisany w SharedPreferences"); // Potwierdzenie
   }
 
   Future<void> _signIn() async {
-    //nickname to wszędzie login tylko nie zostało to zmienione w bazie danych
+    // NOTE: nickname to wszędzie login tylko nie zostało to zmienione w bazie danych
     final nickName = _loginController.text;
     final password = _passwordController.text;
 
@@ -60,7 +57,6 @@ class _SignInPageState extends State<SignInPage> {
 
       if (userData != null) {
         final token = userData['token'];
-        print("Otrzymany token: $token"); // Debugowanie tokenu z serwera
         await saveToken(token); // Zapis tokenu
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -116,25 +112,22 @@ class _SignInPageState extends State<SignInPage> {
               child: TextField(
                 controller: _passwordController,
                 obscureText: !_showPassword,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
                   labelText: 'Hasło',
+                  suffixIcon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: GestureDetector(
+                      key: ValueKey(_showPassword),
+                      onTap: () => setState(() => _showPassword = !_showPassword),
+                      child: Icon(
+                        _showPassword ? Icons.visibility : Icons.visibility_off,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _showPassword,
-                  onChanged: (value) {
-                    setState(() {
-                      _showPassword = value!;
-                    });
-                  }
-                ),
-                const Text("Pokaż hasło")
-              ]
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 5.0),

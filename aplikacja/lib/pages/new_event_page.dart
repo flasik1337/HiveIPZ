@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart'; // Baza danych
+import '../database/database_helper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/event.dart';
 import '../widgets/event_type_grid.dart';
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-// Dodaj import dla kodowania Base64
-// Import dla obsługi plików
 
+/// Strona tworzenia nowego wydarzenia z formularzem do wypełnienia
 class CreateEventPage extends StatefulWidget {
   final Function(Event) onEventCreated;
 
@@ -19,7 +16,7 @@ class CreateEventPage extends StatefulWidget {
 }
 
 class _CreateEventPageState extends State<CreateEventPage> {
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -55,42 +52,15 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
   }
 
-  // TODO zastąp to zapisem na dysk/do bazy danych
-  // funkcja zapisująca zdjęcie wydarzenia w telefonie
-  // jest tylko i wyłącznie do debugu, to nie może trafić do produkcji
-  // ta funkcja jest dosyć syfiasta, uważajcie z używaniem jej
-  Future<String?> saveImageLocaly(XFile? image) async {
-    try {
-      if (image != null) {
-        // ścieżka do roota aplikacji
-        final directory = await getExternalStorageDirectory();
-        print(directory);
-
-        // ścieżka zapisu obrazu
-        final String filePath = '${directory!.path}/assets/${image.name}';
-        print(filePath);
-
-        final File imageFile = File(image.path);
-        await imageFile.copy(filePath);
-
-        return filePath;
-      }
-    } catch (e) {
-      print("Błąd podczas zapisu obrazu: $e");
-      return null;
-    }
-    return null;
-  }
-
   Future<void> _submitEvent() async {
-    if (_formKey.currentState!.validate()) {
+    if (formKey.currentState!.validate()) {
       try {
         // tworzymy mapę z danymi wydarzenia
         final eventData = {
           'id': DateTime.now().millisecondsSinceEpoch.toString(),
           'name': _nameController.text,
           'location': _locationController.text,
-          'description': _descriptionController.text, // Dodano pole description
+          'description': _descriptionController.text,
           'type': _selectedEventType ?? 'Brak typu', // upewniamy się, że typ jest ustawiony
           'start_date': _selectedDate.toIso8601String(), // formatujemy datę do ISO 8601
           'max_participants': _maxParticipantsController.text.isEmpty
@@ -135,7 +105,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
   }
 
-  // TODO no nie zmienia zdjęcia, nie wiem czy tu jest problem czy dalej z zapisywaniem pamiętaj o tym
+  // FIXME: powinno dodawać zdjęcie, a nie dodaje, możemy pomysleć nad podobną logika do Kuby z profilowym
   Future<void> _addEventPhoto() async {
     showModalBottomSheet(
       context: context,
@@ -150,7 +120,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 Navigator.pop(context);
                 final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                 if (image != null) {
-                  final String? savedPath = await saveImageLocaly(image);
+                  // FIXME: daje tutaj pustego stringa, wyjebałem tamtą syfiastą funkcję
+                  final String? savedPath = "";
                   if (savedPath != null) {
                     setState(() {
                       _imagePath = savedPath;
@@ -166,7 +137,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 Navigator.pop(context);
                 final XFile? image = await _picker.pickImage(source: ImageSource.camera);
                 if (image != null) {
-                  final String? savedPath = await saveImageLocaly(image);
+                  // FIXME: daje tutaj pustego stringa, wyjebałem tamtą syfiastą funkcję
+                  final String? savedPath = "";
                   if (savedPath != null) {
                     setState(() {
                       _imagePath = image.path;
@@ -204,19 +176,19 @@ class _CreateEventPageState extends State<CreateEventPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey,
+          key: formKey,
           child: Column(
             children: [
               GestureDetector(
                 onTap: _addEventPhoto,
                 child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16.0),
-                    child:  Image.asset(
-                      _imagePath!,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    )
+                  borderRadius: BorderRadius.circular(16.0),
+                  child:  Image.asset(
+                    _imagePath!,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  )
                 ),
               ),
               ElevatedButton(

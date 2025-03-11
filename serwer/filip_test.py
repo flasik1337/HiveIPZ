@@ -10,9 +10,6 @@ import os
 from datetime import datetime
 import base64
 import socket
-import re # Obsługa regexa
-from datetime import timedelta # Obsługa czasu niekatywnosci
-
 
 load_dotenv()
 
@@ -128,103 +125,58 @@ def verify_email():
         return jsonify({'error': 'Brak tokenu weryfikacyjnego'}), 400
 
     try:
-        cursor = mydb.cursor()
-        # Weryfikacja tokenu i aktualizacja pola is_verified
-        sql = "SELECT id FROM users WHERE verification_token = %s"
-        cursor.execute(sql, (token,))
-        user = cursor.fetchone()
+        with mydb.cursor(dictionary=True) as cursor:
+            # Weryfikacja tokenu i aktualizacja pola is_verified
+            sql = "SELECT id FROM users WHERE verification_token = %s"
+            cursor.execute(sql, (token,))
+            user = cursor.fetchone()
 
-        if not user:
-            return jsonify({'error': 'Nieprawidłowy token weryfikacyjny'}), 400
+            if not user:
+                return jsonify({'error': 'Nieprawidłowy token weryfikacyjny'}), 400
 
-        update_sql = "UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = %s"
-        cursor.execute(update_sql, (user[0],))
-        mydb.commit()
+            update_sql = "UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = %s"
+            cursor.execute(update_sql, (user[0],))
+            mydb.commit()
 
         return jsonify({'message': 'E-mail został zweryfikowany pomyślnie'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    login_input = data.get('nickName')
-    password = data.get('password')
-
-    print(f"\n[REQUEST_DATA] Login: {login_input}, Hasło: {password}")  # Logowanie danych
-
-    if not login_input or not password:
-        return jsonify({'message': 'Brak loginu lub hasła'}), 400
-
-    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    is_email = re.match(email_pattern, login_input) is not None
-
     try:
-        cursor = mydb.cursor(dictionary=True)
-        column = 'email' if is_email else 'nickName'
+        data = request.get_json()
+        login = data['nickName']
+        password = data['password']
 
-        # Pobierz użytkownika z bazy
-        sql = f"SELECT * FROM users WHERE {column} = %s"
-        cursor.execute(sql, (login_input,))
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT * FROM users WHERE nickName = %s AND password = %s"
+        val = (login, password)
+        cursor.execute(sql, val)
         user = cursor.fetchone()
 
-        if not user or user['password'] != password:
-            return jsonify({'message': 'Nieprawidłowy login lub hasło'}), 401
+        if user:
+            if user['is_verified'] == 0:
+                return jsonify({'message': 'Adres e-mail nie został zweryfikowany'}), 403
 
+            # Sprawdzanie, czy istnieje już token
+            token = user.get('token')
+            if not token:
+                # Generowanie nowego tokenu, jeśli nie istnieje
+                token = secrets.token_urlsafe(32)
+                update_sql = "UPDATE users SET token = %s WHERE nickName = %s"
+                cursor.execute(update_sql, (token, login))
+                mydb.commit()
+                print(f"Generated new token for user: {token}")
+            else:
+                print(f"Existing token found for user: {token}")
 
-        if not user['is_verified']:
-            return jsonify({'message': 'Konto niezweryfikowane'}), 403
-
-        token = user.get('token')
-        if not token:
-            token = secrets.token_urlsafe(32)
-            update_sql = f"UPDATE users SET token = %s WHERE {column} = %s"
-            cursor.execute(update_sql, (token, login_input))
-            mydb.commit()
-
-        user_id = user['id']
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        expires_at = (datetime.now() + timedelta(days=120)).strftime('%Y-%m-%d %H:%M:%S')  # Wygaśnięcie za 120 dni
-
-        # Sprawdź, czy rekord istnieje w users_info
-        check_sql = "SELECT userID FROM users_info WHERE userID = %s"
-        cursor.execute(check_sql, (user_id,))
-        existing_record = cursor.fetchone()
-
-        if existing_record:
-            # Jeżeli taki rekord instieje, aktualizuuemy go
-            update_info_sql = """
-                        UPDATE users_info
-                        SET last_login = %s, token_expires_at = %s
-                        WHERE userID = %s
-                    """
-            cursor.execute(update_info_sql, (current_time, expires_at, user_id))
+            return jsonify({'message': 'Zalogowano pomyślnie', 'user': user, 'token': token}), 200
         else:
-            # Jeżeli go nie ma ^ tworzymy
-            insert_info_sql = """
-                        INSERT INTO users_info (userID, last_login, token_expires_at)
-                        VALUES (%s, %s, %s)
-                    """
-            cursor.execute(insert_info_sql, (user_id, current_time, expires_at))
-
-        mydb.commit()
-
-        return jsonify({
-            'message': 'Zalogowano pomyślnie',
-            'user': {
-                'id': user['id'],
-                'email': user['email'],
-                'nickName': user['nickName'],
-                'is_verified': user['is_verified']
-            },
-            'token': token
-        }), 200
-
-
+            return jsonify({'message': 'Nieprawidłowy login lub hasło'}), 401
     except Exception as e:
-        print(f"[SERVER_ERROR] {str(e)}")  # Logowanie błędów serwera
-        return jsonify({'message': f'Błąd serwera: {str(e)}'}), 500
+        print(e)
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/logout', methods=['POST'])
@@ -273,6 +225,22 @@ def verify_token():
         print(f"Ogólny błąd: {e}")
         return jsonify({'error': 'Błąd serwera', 'details': str(e)}), 500
 
+# Filipa syfn a pobieranie hasła
+@app.route('/get_password/<user_id>', methods=['GET'])
+def get_password(user_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT password FROM users WHERE id = %s"
+        cursor.execute(sql, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Nie znaleziono użytkownika o podanym ID'}), 404
+
+        return jsonify({'password': user['password']}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # Częśc patrykowa do konta użytkownika
 @app.route('/get_user_by_token', methods=['POST'])
@@ -286,19 +254,19 @@ def get_user_by_token():
             return jsonify({"message": "Brak tokenu w żądaniu"}), 400
 
         # Połączenie z bazą danych
-        cursor = mydb.cursor(dictionary=True)
+        with mydb.cursor(dictionary=True) as cursor:
 
-        # Wykonanie zapytania SQL
-        query = "SELECT id, email, nickName, imie, nazwisko, is_verified FROM users WHERE token = %s"
-        cursor.execute(query, (token,))
-        user = cursor.fetchone()
+            # Wykonanie zapytania SQL
+            query = "SELECT id, email, nickName, imie, nazwisko, is_verified FROM users WHERE token = %s"
+            cursor.execute(query, (token,))
+            user = cursor.fetchone()
 
-        # Zamknięcie kursora
-        cursor.close()
+            # Zamknięcie kursora
+            cursor.close()
 
-        # Sprawdzenie, czy użytkownik istnieje
-        if not user:
-            return jsonify({"message": "Nie znaleziono użytkownika dla podanego tokenu"}), 404
+            # Sprawdzenie, czy użytkownik istnieje
+            if not user:
+                return jsonify({"message": "Nie znaleziono użytkownika dla podanego tokenu"}), 404
 
         # Zwrócenie danych użytkownika
         return jsonify({"user": user}), 200
@@ -356,14 +324,14 @@ def serve_image(filename):
 @app.route('/events', methods=['GET'])
 def get_all_events():
     try:
-        cursor = mydb.cursor(dictionary=True)
-        sql = "SELECT * FROM events"
-        cursor.execute(sql)
-        events = cursor.fetchall()
-        print(events)
-        # Konwersja datetime na string
-        for event in events:
-            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+        with mydb.cursor(dictionary=True) as cursor:
+            sql = "SELECT * FROM events"
+            cursor.execute(sql)
+            events = cursor.fetchall()
+            print(events)
+            # Konwersja datetime na string
+            for event in events:
+                event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
 
         return jsonify(events), 200
     except Exception as e:
@@ -374,25 +342,25 @@ def get_all_events():
 def add_event():
     try:
         data = request.get_json()
-        cursor = mydb.cursor()
-        sql = """
-        INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image, user_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        val = (
-            data['id'],
-            data['name'],
-            data['location'],
-            data['description'],
-            data['type'],
-            data['start_date'],
-            data['max_participants'],
-            data['registered_participants'],
-            data['image'],
-            data['user_id']
-        )
-        cursor.execute(sql, val)
-        mydb.commit()
+        with mydb.cursor() as cursor:
+            sql = """
+            INSERT INTO events (id, name, location, description, type, start_date, max_participants, registered_participants, image, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            val = (
+                data['id'],
+                data['name'],
+                data['location'],
+                data['description'],
+                data['type'],
+                data['start_date'],
+                data['max_participants'],
+                data['registered_participants'],
+                data['image'],
+                data['user_id']
+            )
+            cursor.execute(sql, val)
+            mydb.commit()
         return jsonify({'message': 'Wydarzenie dodane pomyślnie'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -460,13 +428,14 @@ def join_event(event_id):
         # Sprawdzenie, czy użytkownik jest już zapisany na wydarzenie
         sql_check = "SELECT * FROM event_participants WHERE event_id = %s AND user_id = %s"
         cursor.execute(sql_check, (event_id, user_id))
-        if cursor.fetchone():
+        result = cursor.fetchone()
+        if result:
             return jsonify({'error': 'Użytkownik jest już zapisany na to wydarzenie'}), 400
 
         # Zapis użytkownika na wydarzenie
         sql_insert = "INSERT INTO event_participants (event_id, user_id) VALUES (%s, %s)"
         cursor.execute(sql_insert, (event_id, user_id))
-
+        
         # Aktualizacja liczby uczestników
         sql_update_participants = """
         UPDATE events
@@ -474,7 +443,7 @@ def join_event(event_id):
         WHERE id = %s
         """
         cursor.execute(sql_update_participants, (event_id,))
-
+        
         mydb.commit()
 
         return jsonify({'message': 'Zapisano użytkownika na wydarzenie'}), 200
@@ -506,7 +475,7 @@ def leave_event(event_id):
         # Usuwanie użytkownika z wydarzenia
         sql_delete = "DELETE FROM event_participants WHERE event_id = %s AND user_id = %s"
         cursor.execute(sql_delete, (event_id, user_id))
-
+        
         # Aktualizacja liczby uczestników
         sql_update_participants = """
         UPDATE events
@@ -514,7 +483,7 @@ def leave_event(event_id):
         WHERE id = %s
         """
         cursor.execute(sql_update_participants, (event_id,))
-
+        
         mydb.commit()
 
         return jsonify({'message': 'Użytkownik został wypisany z wydarzenia'}), 200
@@ -530,29 +499,29 @@ def check_user_joined(event_id):
             return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
 
         token = token.split(" ")[1]
-        cursor = mydb.cursor(dictionary=True)
+        with mydb.cursor(dictionary=True) as cursor:
 
-        # Pobieranie user_id z tokenu
-        sql = "SELECT id FROM users WHERE token = %s"
-        cursor.execute(sql, (token,))
-        user = cursor.fetchone()
+            # Pobieranie user_id z tokenu
+            sql = "SELECT id FROM users WHERE token = %s"
+            cursor.execute(sql, (token,))
+            user = cursor.fetchone()
 
-        if not user:
-            return jsonify({'error': 'Nieprawidłowy token'}), 401
+            if not user:
+                return jsonify({'error': 'Nieprawidłowy token'}), 401
 
-        user_id = user['id']
+            user_id = user['id']
 
-        # Sprawdzenie, czy użytkownik jest zapisany na wydarzenie
-        sql_check = "SELECT * FROM event_participants WHERE event_id = %s AND user_id = %s"
-        cursor.execute(sql_check, (event_id, user_id))
-        is_joined = cursor.fetchone() is not None
+            # Sprawdzenie, czy użytkownik jest zapisany na wydarzenie
+            sql_check = "SELECT * FROM event_participants WHERE event_id = %s AND user_id = %s"
+            cursor.execute(sql_check, (event_id, user_id))
+            is_joined = cursor.fetchone() is not None
 
         return jsonify({'is_joined': is_joined}), 200
     except Exception as e:
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Czy jest moderatorem danego wydarzenia
+# Czy jest moderatorem danego wydarzenia 
 @app.route('/events/<event_id>/is_admin', methods=['GET'])
 def is_admin(event_id):
     try:
@@ -681,11 +650,6 @@ def verify_password():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/')
-def mainPage():
-   return "Ahoj"
-
 if __name__ == '__main__':
     ip = get_local_ip()
-    app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
-                     '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
+    app.run(host=f'{ip}', port=5000, debug=True)

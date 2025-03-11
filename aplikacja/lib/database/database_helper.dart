@@ -1,27 +1,10 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
-import 'package:mysql1/mysql1.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
-  static const String link = 'http://212.127.78.92:5000';
-  // static const String host = 'localhost';
-  // static const int port = 3306;
-  // static const String user = 'root';
-  // static const String password = ''; // Dałem bez hasłowy dostęp bo i tak lokalnie
-  // static const String db = 'projektIPZ'; // Nazwa bazydancych
-  //
-  // static Future<MySqlConnection> getConnection() async {
-  //   final settings = ConnectionSettings(
-  //     host: host,
-  //     port: port,
-  //     user: user,
-  //     password: password,
-  //     db: db,
-  //   );
-  //   return await MySqlConnection.connect(settings);
-  // }
+  static const String link = 'https://vps.jakosinski.pl:5000';
+
   static Future<void> addUser(
       String name,
       String surname,
@@ -96,14 +79,11 @@ class DatabaseHelper {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    if (response.statusCode == 200) {
-      // Token jest ważny
-      print('Token jest ważny');
-    } else {
+    // FIXME: zmieniłem to, żeby było ładniejsze, ale niech ktoś kto to bardziej ogarnia te kody sprawdzi czy to śmiga
+    if (response.statusCode != 200) {
       // Token jest nieważny
-      print('Token jest nieważny');
       throw Exception(
-          'Token jest nieważny'); // Możesz obsłużyć błąd w inny sposób
+          'Token jest nieważny');
     }
   }
 
@@ -128,8 +108,6 @@ class DatabaseHelper {
 
   // Zmiana hasła po starym haśle
   static Future<void> changePasswordWithOld(String oldPassword, String newPassword) async {
-    print("DEBUG: stare hasło: $oldPassword");
-    print("DEBUG: nowe hasło: $newPassword");
     final url = Uri.parse('$link/change_password_with_old');
     final response = await http.post(
       url,
@@ -145,7 +123,6 @@ class DatabaseHelper {
 
   // Dodawanie wydarzeń
   static Future<void> addEvent(Map<String, dynamic> eventData) async {
-    print("DEBUG: userId w dbhelper: ${eventData['user_id']}");
     final url = Uri.parse('$link/events');
     final response = await http.post(
       url,
@@ -169,10 +146,7 @@ class DatabaseHelper {
       body: jsonEncode(eventData),
     );
 
-    if (response.statusCode == 200) {
-      print('Wydarzenie zaktualizowane pomyślnie');
-      print("Wysłane dane: $eventData");
-    } else {
+    if (response.statusCode != 200) {
       print('Błąd: ${response.statusCode}, Treść odpowiedzi: ${response.body}');
       final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
       throw Exception(error);
@@ -185,9 +159,7 @@ class DatabaseHelper {
     final url = Uri.parse('$link/events/$id');
     final response = await http.delete(url);
 
-    if (response.statusCode == 200) {
-      print('Wydarzenie usunięte pomyślnie');
-    } else {
+    if (response.statusCode != 200) {
       final error = jsonDecode(response.body)['error'];
       throw Exception(error);
     }
@@ -213,8 +185,6 @@ class DatabaseHelper {
 
     print("\nDEBUG: Wysyłanie zapytania do $url");
     final response = await http.get(url);
-    print('DEBUG: Status code: ${response.statusCode}');
-    print('DEBUG: Odpowiedź serwera: ${response.body}');
 
     if (response.statusCode == 200) {
       try {
@@ -243,9 +213,7 @@ class DatabaseHelper {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    if (response.statusCode == 200) {
-      print('Konto zostało usunięte');
-    } else {
+    if (response.statusCode != 200) {
       final error = jsonDecode(response.body)['error'];
       throw Exception(error);
     }
@@ -292,9 +260,7 @@ class DatabaseHelper {
       },
     );
 
-    if (response.statusCode == 200) {
-      print('Dołączono do wydarzenia');
-    } else {
+    if (response.statusCode != 200) {
       final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
       throw Exception('Błąd przy zapisie na wydarzenie: $error');
     }
@@ -334,8 +300,6 @@ class DatabaseHelper {
       url,
       headers: {'Authorization': 'Bearer $token'},
     );
-
-    print('DEBUG: Odpowiedź serwera: ${response.body}'); // Debuguj odpowiedź serwera
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -433,7 +397,5 @@ class DatabaseHelper {
       throw Exception(error);
     }
   }
-
-
 }
 

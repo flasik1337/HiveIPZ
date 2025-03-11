@@ -8,7 +8,7 @@ class Event {
   final int maxParticipants;
   final int registeredParticipants;
   final String imagePath;
-  final int? userId; // Pole opcjonalne, może być null
+  final int? userId;
   final double cena;
 
   const Event({
