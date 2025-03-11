@@ -6,6 +6,7 @@ import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
@@ -23,11 +24,16 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _bottomCenaController = TextEditingController();
   final TextEditingController _upCenaController = TextEditingController();
+  bool isSearching = false;
+
+  // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
+  List<String> recentSearches = ['pudzian', 'kremówki', 'mariusz'];
 
   @override
   void initState() {
     super.initState();
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
+    _loadRecentSearches(); //pobranie poprzednich wyszukiwań
   }
 
   // Pobieranie wydarzeń z bazy
@@ -40,6 +46,15 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       print('Błąd podczas pobierania danych wydarzeń: $e');
     }
+  }
+
+  // pobierz poprzednie wyszukiwania (zapis do konta użytkownika np. 5 ostatnich?)
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentSearches = prefs.getStringList('recentSearches') ??
+          ['pudzian', 'kremówki', 'mariusz'];
+    });
   }
 
   /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
@@ -218,14 +233,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _filterEventsByDate(DateTime dateBottom, DateTime dateUp) {
-    final filteredEvents = events.where((event) =>
-        event.startDate.year >= dateBottom.year &&
-        event.startDate.month >= dateBottom.month &&
-        event.startDate.day >= dateBottom.day &&
-        event.startDate.year <= dateUp.year &&
-        event.startDate.month <= dateUp.month &&
-        event.startDate.day <= dateUp.day
-    ).toList();
+    final filteredEvents = events
+        .where((event) =>
+            event.startDate.year >= dateBottom.year &&
+            event.startDate.month >= dateBottom.month &&
+            event.startDate.day >= dateBottom.day &&
+            event.startDate.year <= dateUp.year &&
+            event.startDate.month <= dateUp.month &&
+            event.startDate.day <= dateUp.day)
+        .toList();
 
     if (filteredEvents.isEmpty) {
       print('Debug: Brak wyników wyszukiwania dla '); // Debugowanie
@@ -425,6 +441,20 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
+  void _toggleSearch() {
+    setState(() {
+      isSearching = !isSearching;
+      if (!isSearching) _searchController.clear();
+    });
+  }
+
+  void _onSearch(String query) {
+    _filterEventsByQuery(query);
+    setState(() {
+      isSearching = false;
+    });
+  }
+
   /// Obsługa NavigationBara na dole ekranu
   /// args:
   ///   int index: wybrany przycisk
@@ -433,7 +463,7 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-          _showSearchDialog();
+          _toggleSearch();
           break;
         case 1:
           Navigator.push(
@@ -511,8 +541,25 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Strona Główna'),
-        centerTitle: true, // Wyśrodkowanie tytułu
+        title: isSearching
+            ? TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: "Szukaj...",
+                  border: InputBorder.none,
+                  suffixIcon: IconButton(
+                      onPressed: _toggleSearch, icon: Icon(Icons.clear)),
+                ),
+                onSubmitted: _onSearch,
+              )
+            : const Text('Strona Główna'),
+        actions: [
+          if (!isSearching)
+            IconButton(
+              onPressed: _toggleSearch,
+              icon: Icon(Icons.search),
+            )
+        ],
       ),
       body: events.isEmpty
           ? const Center(
