@@ -98,17 +98,19 @@ class _SignInPageState extends State<SignInPage> {
             ),
             const SizedBox(height: 20),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 5.0),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 40.0, vertical: 5.0),
               child: TextField(
                 controller: _loginController,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  labelText: 'login',
+                  labelText: 'Login lub e-mail',
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 5.0),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 40.0, vertical: 5.0),
               child: TextField(
                 controller: _passwordController,
                 obscureText: !_showPassword,
@@ -119,10 +121,13 @@ class _SignInPageState extends State<SignInPage> {
                     duration: const Duration(milliseconds: 300),
                     child: GestureDetector(
                       key: ValueKey(_showPassword),
-                      onTap: () => setState(() => _showPassword = !_showPassword),
+                      onTap: () =>
+                          setState(() => _showPassword = !_showPassword),
                       child: Icon(
                         _showPassword ? Icons.visibility : Icons.visibility_off,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme
+                            .of(context)
+                            .primaryColor,
                       ),
                     ),
                   ),
@@ -160,7 +165,8 @@ class _SignInPageState extends State<SignInPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RegisterPage()),
+                    MaterialPageRoute(
+                        builder: (context) => const RegisterPage()),
                   );
                 },
                 child: const Text(
