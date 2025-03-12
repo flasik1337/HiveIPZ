@@ -393,16 +393,61 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
 
   Future<void> _authenticateBiometric() async {
     final LocalAuthentication auth = LocalAuthentication();
-    bool authenticated = await auth.authenticate(
-      localizedReason: 'Włącz weryfikację biometryczną',
-    );
+    bool authenticated = false;
 
-    if (authenticated) {
-      setState(() {
-        _isBiometricEnabled = true;
-      });
-      await _saveSettings();
+    try {
+      // Sprawdź, czy urządzenie obsługuje biometrię
+      bool canCheckBiometrics = await auth.canCheckBiometrics;
+      if (!canCheckBiometrics) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Twoje urządzenie nie obsługuje biometrii')),
+        );
+        return;
+      }
+
+      // Wykonaj uwierzytelnianie biometryczne
+      authenticated = await auth.authenticate(
+        localizedReason: 'Zaloguj się przy użyciu biometrii',
+        options: const AuthenticationOptions(
+          stickyAuth: true, // Pozostaje aktywne po zmianie aplikacji
+        ),
+      );
+
+      if (authenticated) {
+        setState(() {
+          _isBiometricEnabled = true; // Włącz biometrię
+        });
+        await _saveSettings(); // Zapisz ustawienia
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometria została włączona')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uwierzytelnianie biometryczne nie powiodło się')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd podczas uwierzytelniania: $e')),
+      );
     }
+  }
+
+  void _validateAndSavePin(String pin) {
+    if (pin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PIN musi składać się z 4 cyfr')),
+      );
+      return;
+    }
+
+    setState(() {
+      _pin = pin; // Zapisz PIN
+    });
+    _saveSettings(); // Zapisz ustawienia
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PIN został zapisany')),
+    );
   }
 
   @override
@@ -457,10 +502,7 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
               keyboardType: TextInputType.number,
               onChanged: (value) {
                 if (value.length == 4) {
-                  setState(() {
-                    _pin = value;
-                  });
-                  _saveSettings();
+                  _validateAndSavePin(value); // Waliduj i zapisz PIN
                 }
               },
             ),
