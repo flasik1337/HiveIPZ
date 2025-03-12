@@ -138,7 +138,7 @@ class DatabaseHelper {
     } else {
       throw Exception(jsonDecode(response.body)['error']);
     }
-}
+  }
 
 
   // Aktualizowanie wydarzeń
@@ -402,4 +402,3 @@ class DatabaseHelper {
     }
   }
 }
-
