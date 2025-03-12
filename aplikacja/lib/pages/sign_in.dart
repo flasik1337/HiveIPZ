@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart'; // Osbługa ikon w formacie svg
 import '../database/database_helper.dart';
 import 'home_page.dart';
 import '../models/event.dart';
 import 'registration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-/// Strona logowania
 class SignInPage extends StatefulWidget {
   final List<Event> events;
   final String? errorMessage;
@@ -25,7 +24,6 @@ class _SignInPageState extends State<SignInPage> {
   @override
   void initState() {
     super.initState();
-    // Wyświetlenie SnackBar z błędem, jeśli sesja wygasła
     if (widget.errorMessage != null) {
       Future.delayed(Duration.zero, () {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -41,7 +39,6 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Future<void> _signIn() async {
-    // NOTE: nickname to wszędzie login tylko nie zostało to zmienione w bazie danych
     final nickName = _loginController.text;
     final password = _passwordController.text;
 
@@ -66,7 +63,7 @@ class _SignInPageState extends State<SignInPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomePage(events: [],),
+            builder: (context) => HomePage(events: []),
           ),
         );
       } else {
@@ -84,99 +81,135 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Logowanie'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Zaloguj się',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 50.0),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 40.0, vertical: 5.0),
-              child: TextField(
-                controller: _loginController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Login lub e-mail',
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFFFFC300), // Zielony
+                    Color(0xFFFBFBFB), // Niebieski
+                  ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 40.0, vertical: 5.0),
-              child: TextField(
-                controller: _passwordController,
-                obscureText: !_showPassword,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: 'Hasło',
-                  suffixIcon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: GestureDetector(
-                      key: ValueKey(_showPassword),
-                      onTap: () =>
-                          setState(() => _showPassword = !_showPassword),
-                      child: Icon(
-                        _showPassword ? Icons.visibility : Icons.visibility_off,
-                        color: Theme
-                            .of(context)
-                            .primaryColor,
+          ),
+          Positioned(
+            bottom: -100,
+            left: -100,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFFFFC300), // Zielony
+                    Color(0xFFFBFBFB), // Niebieski
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Hive',
+                    style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 40),
+                  TextField(
+                    controller: _loginController,
+                    decoration: InputDecoration(
+                      labelText: 'Email / Nazwa użytkownika',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: !_showPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Hasło',
+                      border: OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () => setState(() => _showPassword = !_showPassword),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5.0),
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/change_password');
-                },
-                child: const Text(
-                  'Nie pamiętam hasła',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    color: Colors.blue,
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/change_password');
+                    },
+                    child: const Text('Zapomniałem hasła'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Color(0xFF000000), // Zielony tekst
+                    ), // Zielony tekst
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _signIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFFFC300), // Zielony
+                      foregroundColor: Colors.white,    // Białe litery
+                      minimumSize: Size(double.infinity, 50),
+                    ),
+                    child: const Text('Zaloguj', style: TextStyle(fontSize: 18)),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('lub zaloguj się przez'),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: SvgPicture.asset('assets/facebook_icon.svg', width: 35, height: 35),
+                        onPressed: () {}, // Tutaj podpiąc logowanie przez Facebooka
+                      ),
+                      const SizedBox(width: 10),
+                      IconButton(
+                        icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
+                        onPressed: () {}, // Tutaj podpiąc logowanie przez Google
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Dołącz do nas!'),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterPage()),
+                          );
+                        },
+                        child: Text(
+                          'Zarejestruj się',
+                          style: TextStyle(color: Color(0xFFFFC300)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5.0),
-              child: ElevatedButton(
-                onPressed: _signIn,
-                child: const Text(
-                  'Zaloguj',
-                  style: TextStyle(fontSize: 20.0),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const RegisterPage()),
-                  );
-                },
-                child: const Text(
-                  'Zarejestruj się',
-                  style: TextStyle(fontSize: 20.0),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
