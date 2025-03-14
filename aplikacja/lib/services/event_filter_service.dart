@@ -1,6 +1,6 @@
+import 'package:Hive/pages/filtered_list_page.dart';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
-import '../pages/filtered_page.dart';
 
 class EventFilterService {
   static void filterEventsByQuery(BuildContext context, List<Event> events, String query) {
@@ -180,7 +180,7 @@ class EventFilterService {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FilteredPage(
+        builder: (context) => FilteredListPage(
           filteredEvents: filteredEvents,
           onUpdate: (updatedEvent) {},
         ),
