@@ -47,7 +47,7 @@ class EventListTile extends StatelessWidget {
                     event.dateFormated(event.startDate),
                     style: TextStyle(
                         fontSize: 14,
-                        color: Colors.amber
+                        color: Colors.amber,
                     ),
                   ),
 
@@ -86,8 +86,8 @@ class EventListTile extends StatelessWidget {
                           event.cena == 0 ? "Wejście darmowe" : "${event.cena.toStringAsFixed(2)} zł",
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: event.cena == 0 ? Colors.green.shade300 : Colors.black,
+                            fontWeight: FontWeight.w300,
+                            color: event.cena == 0 ? Colors.green.shade700 : Colors.black,
                           ),
                         ),
                       ],
