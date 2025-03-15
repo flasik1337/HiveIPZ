@@ -177,7 +177,7 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     onTap: () {
                       setModalState(() {
-                        selectedSortingType = 1;
+                        selectedSortingType = 0;
                       });
                       // w tym miejscu funkcja sortująca po proponowanych
                     },

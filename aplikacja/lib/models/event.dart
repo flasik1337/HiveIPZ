@@ -37,9 +37,9 @@ class Event {
       registeredParticipants: json['registered_participants'] as int,
       imagePath: json['image'] as String,
       userId: json['user_id'] != null ? json['user_id'] as int : null,
-      cena: json['cena'] != null 
-      ? double.tryParse(json['cena'].toString()) ?? 0.0
-      : 0.0,
+      cena: json['cena'] != null
+          ? double.tryParse(json['cena'].toString()) ?? 0.0
+          : 0.0,
     );
   }
 
@@ -64,10 +64,33 @@ class Event {
       type: type ?? this.type,
       startDate: startDate ?? this.startDate,
       maxParticipants: maxParticipants ?? this.maxParticipants,
-      registeredParticipants: registeredParticipants ?? this.registeredParticipants,
+      registeredParticipants:
+          registeredParticipants ?? this.registeredParticipants,
       imagePath: imagePath ?? this.imagePath,
       userId: userId ?? this.userId,
       cena: cena ?? this.cena,
     );
   }
+
+  String dateFormated(DateTime startDate) {
+    List<String> months = [
+      'stycznia',
+      'lutego',
+      'marca',
+      'kwietnia',
+      'maja',
+      'czerwca',
+      'lipca',
+      'sierpnia',
+      'września',
+      'października',
+      'listopada',
+      'grudnia'
+    ];
+    String result = '${startDate.day} ${months[startDate.month - 1]} ${startDate.year}';
+
+    return (result);
+  }
+
+
 }
