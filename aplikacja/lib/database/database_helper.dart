@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -186,8 +185,6 @@ class DatabaseHelper {
   //Pobieranie wszystkich wydarzeń
   static Future<List<Map<String, dynamic>>> getAllEvents() async {
     var url = Uri.parse('$link/events');
-
-    print("\nDEBUG: Wysyłanie zapytania do $url");
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -225,7 +222,6 @@ class DatabaseHelper {
 
   static Future<bool> verifyPassword(String token, String password) async {
     final url = Uri.parse('$link/verify_password');
-    print(token);
     final response = await http.post(
       url,
       headers: {

@@ -7,7 +7,9 @@ class FilteredPage extends StatelessWidget {
   final List<Event> filteredEvents;
   final Function(Event) onUpdate; // funkcja do aktualizacji wydarzeń
 
-  const FilteredPage({Key? key, required this.filteredEvents, required this.onUpdate}) : super(key: key);
+  const FilteredPage(
+      {Key? key, required this.filteredEvents, required this.onUpdate})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -17,18 +19,21 @@ class FilteredPage extends StatelessWidget {
       ),
       body: filteredEvents.isEmpty
           ? const Center(
-        child: Text(
-          'Brak wyników',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      )
+              child: Text(
+                'Brak wyników',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            )
           : PageView.builder(
-        scrollDirection: Axis.vertical,
-        itemCount: filteredEvents.length,
-        itemBuilder: (context, index) {
-          return EventCard(event: filteredEvents[index], onUpdate: onUpdate,);
-        },
-      ),
+              scrollDirection: Axis.vertical,
+              itemCount: filteredEvents.length,
+              itemBuilder: (context, index) {
+                return EventCard(
+                  event: filteredEvents[index],
+                  onUpdate: onUpdate,
+                );
+              },
+            ),
     );
   }
 }

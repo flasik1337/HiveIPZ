@@ -6,7 +6,9 @@ import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
+import '../services/event_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
@@ -25,6 +27,8 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _bottomCenaController = TextEditingController();
   final TextEditingController _upCenaController = TextEditingController();
   bool isSearching = false;
+  int selectedSortingType = 0;
+  bool sortingAscending = false;
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
   List<String> recentSearches = ['pudzian', 'kremówki', 'mariusz'];
@@ -32,9 +36,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+        overlays: [SystemUiOverlay.bottom]
+    );
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
   }
+
 
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
@@ -57,388 +66,28 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
-  /// args:
-  ///   String query: hasło kluczowe do wyszukania
-  void _filterEventsByQuery(String query) {
-    query = query.trim(); // Usuń zbędne spacje
-    print('Debug: Wartość query po trim = "$query"'); // Debugowanie
-
-    if (query.isEmpty) {
-      print('Debug: Pole wyszukiwania jest puste.'); // Debugowanie
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'Pole wyszukania nie może być puste.',
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.cancel, color: Colors.red),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
-    // Filtracja wydarzeń
-    final filteredEvents = events
-        .where((event) =>
-            event.name.toLowerCase().contains(query.toLowerCase()) ||
-            event.location.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-
-    if (filteredEvents.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'Nie znaleziono żadnych wydarzeń.',
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.cancel, color: Colors.red),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FilteredPage(
-          filteredEvents: filteredEvents,
-          onUpdate: (updatedEvent) {
-            setState(() {
-              final index =
-                  events.indexWhere((event) => event.id == updatedEvent.id);
-              if (index != -1) {
-                events[index] = updatedEvent;
-              }
-            });
-          },
-        ),
-      ),
-    );
+  void sortEventsByPrice(bool ascending) {
+    setState(() {
+      events.sort((a, b) =>
+      ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
+    });
   }
 
-  void _filterEventsByType(String typeFilter, String query) {
-    final filteredEvents = events
-        .where((event) =>
-            event.type.toLowerCase().contains(typeFilter.toLowerCase()))
-        .toList();
-
-    if (filteredEvents.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'Nie znaleziono żadnych wydarzeń.',
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.cancel, color: Colors.red),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FilteredPage(
-          filteredEvents: filteredEvents,
-          onUpdate: (updatedEvent) {
-            setState(() {
-              final index =
-                  events.indexWhere((event) => event.id == updatedEvent.id);
-              if (index != -1) {
-                events[index] = updatedEvent;
-              }
-            });
-          },
-        ),
-      ),
-    );
+  void sortEventsByParticipants(bool ascending) {
+    setState(() {
+      events.sort((a, b) =>
+      ascending
+          ? a.registeredParticipants.compareTo(b.registeredParticipants)
+          : b.registeredParticipants.compareTo(a.registeredParticipants));
+    });
   }
 
-  void _filterEventsByPrice(double priceBottom, double priceUp) {
-    final filteredEvents = events
-        .where((event) => event.cena <= priceUp && event.cena >= priceBottom)
-        .toList();
-
-    if (filteredEvents.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'Nie znaleziono żadnych wydarzeń.',
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.cancel, color: Colors.red),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FilteredPage(
-          filteredEvents: filteredEvents,
-          onUpdate: (updatedEvent) {
-            setState(() {
-              final index =
-                  events.indexWhere((event) => event.id == updatedEvent.id);
-              if (index != -1) {
-                events[index] = updatedEvent;
-              }
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _filterEventsByDate(DateTime dateBottom, DateTime dateUp) {
-    final filteredEvents = events
-        .where((event) =>
-            event.startDate.year >= dateBottom.year &&
-            event.startDate.month >= dateBottom.month &&
-            event.startDate.day >= dateBottom.day &&
-            event.startDate.year <= dateUp.year &&
-            event.startDate.month <= dateUp.month &&
-            event.startDate.day <= dateUp.day)
-        .toList();
-
-    if (filteredEvents.isEmpty) {
-      print('Debug: Brak wyników wyszukiwania dla '); // Debugowanie
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'Nie znaleziono żadnych wydarzeń.',
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Icon(Icons.cancel, color: Colors.red),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FilteredPage(
-          filteredEvents: filteredEvents,
-          onUpdate: (updatedEvent) {
-            setState(() {
-              final index =
-                  events.indexWhere((event) => event.id == updatedEvent.id);
-              if (index != -1) {
-                events[index] = updatedEvent;
-              }
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  void _showCenaDialog() {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-              title: const Text('Podaj przedział cenowy'),
-              content: Column(
-                children: [
-                  TextField(
-                    controller: _bottomCenaController,
-                    keyboardType: TextInputType.number,
-                    decoration:
-                        InputDecoration(hintText: 'Podaj dolną granicę'),
-                  ),
-                  TextField(
-                    controller: _upCenaController,
-                    keyboardType: TextInputType.number,
-                    decoration:
-                        InputDecoration(hintText: 'Podaj górną granicę'),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _searchController.clear();
-                    },
-                    child: const Icon(Icons.cancel)),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    double bottom = _bottomCenaController.text == ""
-                        ? 0.0
-                        : double.parse(_bottomCenaController.text);
-                    double up = _upCenaController.text == ""
-                        ? double.infinity
-                        : double.parse(_upCenaController.text);
-                    if (double.parse(_upCenaController.text) <
-                        double.parse(_bottomCenaController.text)) {
-                      bottom = double.parse(_upCenaController.text);
-                      up = double.parse(_bottomCenaController.text);
-                    }
-                    _filterEventsByPrice(bottom, up);
-                    _bottomCenaController.clear();
-                    _upCenaController.clear(); // Wyczyść pole
-                  },
-                  child: const Icon(Icons.search),
-                ),
-              ]);
-        });
-  }
-
-  void _showDateRangeDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        DateTime? dateBottom;
-        DateTime? dateUp;
-
-        return AlertDialog(
-          title: const Text('Wybierz przedział dat'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () async {
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null) {
-                    dateBottom = pickedDate;
-                  }
-                },
-                child: const Text('Wybierz datę początkową'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () async {
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: dateBottom ?? DateTime.now(),
-                    firstDate: dateBottom ?? DateTime.now(),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null) {
-                    dateUp = pickedDate;
-                  }
-                },
-                child: const Text('Wybierz datę końcową'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Anuluj'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (dateBottom != null && dateUp != null) {
-                  Navigator.of(context).pop();
-                  _filterEventsByDate(dateBottom!, dateUp!);
-                }
-              },
-              child: const Text('Filtruj'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Otwieranie okna dialogowego z wyszukiwaniem
-  void _showSearchDialog({bool onlyLocation = false}) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Wyszukiwanie wydarzeń'),
-            content: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: onlyLocation
-                    ? 'Wprowadź lokalizację'
-                    : 'Wprowadź nazwę lub lokalizację',
-              ),
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _searchController.clear();
-                  },
-                  child: const Icon(Icons.cancel)),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  print(
-                      'Debug: Wartość w polu wyszukiwania: ${_searchController.text}'); // Debugowanie
-                  _filterEventsByQuery(_searchController.text);
-                  _searchController.clear(); // Wyczyść pole
-                },
-                child: const Icon(Icons.search),
-              ),
-            ],
-          );
-        });
+  void sortEventsByDate(bool ascending) {
+    setState(() {
+      events.sort((a, b) =>
+      ascending ? a.startDate.compareTo(b.startDate) : b
+          .startDate.compareTo(a.startDate));
+    });
   }
 
   void _toggleSearch() {
@@ -449,10 +98,172 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSearch(String query) {
-    _filterEventsByQuery(query);
+    EventFilterService.filterEventsByQuery(context, events, query);
     setState(() {
       isSearching = false;
     });
+  }
+
+  void showFilterModalBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Filtruj po:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ListTile(
+                  title: const Text('Typ wydarzenia'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return EventTypeGrid(
+                              onEventTypeSelected: (String typeFilter) {
+                                EventFilterService.filterEventsByType(
+                                    context, events, typeFilter);
+                              });
+                        });
+                  }),
+              ListTile(
+                title: const Text('Data'),
+                onTap: () {
+                  Navigator.pop(context);
+                  EventFilterService.showDateFilterDialog(context, events);
+                },
+              ),
+              ListTile(
+                  title: const Text('Lokalizacja'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    EventFilterService.showLocationFilterDialog(
+                        context, events);
+                  }),
+              ListTile(
+                  title: const Text('Cena'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    EventFilterService.showPriceFilterDialog(context, events);
+                  })
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showSortingModalBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Sortuj według:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  // proponowane (domyślne), id = 0, (bez porządku, bo jedyny porządek to taki, że dajemy najfajniesze capiche?)
+                  ListTile(
+                    title: const Text('Proponowane'),
+                    tileColor: selectedSortingType == 0
+                        ? Colors.amber.withOpacity(0.3)
+                        : null,
+                    onTap: () {
+                      setModalState(() {
+                        selectedSortingType = 0;
+                      });
+                      // w tym miejscu funkcja sortująca po proponowanych
+                    },
+                  ),
+                  // po cenie, id=1
+                  ListTile(
+                    title: const Text('Cena'),
+                    tileColor: selectedSortingType == 1
+                        ? Colors.amber.withOpacity(0.3)
+                        : null,
+                    trailing: selectedSortingType == 1
+                        ? Icon(sortingAscending
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
+                        : null,
+                    onTap: () {
+                      setModalState(() {
+                        if (selectedSortingType != 1) {
+                          sortingAscending = false;
+                          selectedSortingType = 1;
+                        } else {
+                          sortingAscending = !sortingAscending;
+                        }
+                      });
+                      sortEventsByPrice(sortingAscending);
+                    },
+                  ),
+                  // po zapisanych uczestnikach, id=2
+                  ListTile(
+                    title: const Text('Zapisani uczestincy'),
+                    tileColor: selectedSortingType == 2
+                        ? Colors.amber.withOpacity(0.3)
+                        : null,
+                    trailing: selectedSortingType == 2
+                        ? Icon(sortingAscending
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
+                        : null,
+                    onTap: () {
+                      setModalState(() {
+                        if (selectedSortingType != 2) {
+                          sortingAscending = false;
+                          selectedSortingType = 2;
+                        } else {
+                          sortingAscending = !sortingAscending;
+                        }
+                      });
+                      sortEventsByParticipants(sortingAscending);
+                    },
+                  ),
+                  // po dacie, id=3
+                  ListTile(
+                    title: const Text('Data'),
+                    tileColor: selectedSortingType == 3
+                        ? Colors.amber.withOpacity(0.3)
+                        : null,
+                    trailing: selectedSortingType == 3
+                        ? Icon(sortingAscending
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
+                        : null,
+                    onTap: () {
+                      setModalState(() {
+                        if (selectedSortingType != 3) {
+                          sortingAscending = false;
+                          selectedSortingType = 3;
+                        } else {
+                          sortingAscending = !sortingAscending;
+                        }
+                      });
+                      sortEventsByDate(sortingAscending);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   /// Obsługa NavigationBara na dole ekranu
@@ -463,69 +274,36 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-          _toggleSearch();
+        // Przejdź do strony głównej
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePage(events: []),
+            ),
+          );
           break;
         case 1:
+        // Hive (nic nie robi)
+          break;
+        case 2:
+        // Dodawanie wydarzenia
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
                 setState(() {
                   events.add(newEvent);
-                  // _filteredEvents = widget.events;
                 });
               }),
             ),
           );
           break;
-        case 2:
-          showModalBottomSheet(
-            context: context,
-            builder: (context) {
-              return Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text(
-                  'Filtruj po:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                ListTile(
-                    title: const Text('Typ wydarzenia'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return EventTypeGrid(
-                                onEventTypeSelected: (String typeFilter) {
-                              _filterEventsByType(typeFilter, "");
-                            });
-                          });
-                    }),
-                ListTile(
-                  title: const Text('Data'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showDateRangeDialog();
-                  },
-                ),
-                ListTile(
-                    title: const Text('Lokalizacja'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      _showSearchDialog(onlyLocation: true);
-                    }),
-                ListTile(
-                    title: const Text('Cena'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      _showCenaDialog();
-                    })
-              ]);
-            },
-          );
-          break;
         case 3:
+        // Filtrowanie
+          showFilterModalBottomSheet();
+          break;
+        case 4:
+        // Profil użytkownika
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -541,17 +319,26 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.amber,
         title: isSearching
             ? TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: "Szukaj...",
-                  border: InputBorder.none,
-                  suffixIcon: IconButton(
-                      onPressed: _toggleSearch, icon: Icon(Icons.clear)),
-                ),
-                onSubmitted: _onSearch,
-              )
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: "Szukaj...",
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.8),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16),
+            suffixIcon: IconButton(
+                icon: Icon(Icons.clear, color: Colors.black),
+                onPressed: _toggleSearch,
+            ),
+          ),
+          onSubmitted: _onSearch,
+        )
             : const Text('Strona Główna'),
         actions: [
           if (!isSearching)
@@ -563,56 +350,58 @@ class _HomePageState extends State<HomePage> {
       ),
       body: events.isEmpty
           ? const Center(
-              child:
-                  CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
-            )
+        child:
+        CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
+      )
           : RefreshIndicator(
-              onRefresh: _fetchAllEvents, // Funkcja do odświeżania
-              child: PageView.builder(
-                scrollDirection: Axis.vertical,
-                itemCount: events.length, // Liczba wydarzeń
-                itemBuilder: (context, index) {
-                  final event =
-                      events[index]; // Pobranie konkretnego wydarzenia
-                  return EventCard(
-                    event: event,
-                    onUpdate: (updatedEvent) {
-                      setState(() {
-                        events[index] = updatedEvent; // Aktualizacja wydarzenia
-                      });
-                    },
-                  );
-                },
-              ),
+        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
+        child: PageView.builder(
+          scrollDirection: Axis.vertical,
+          itemCount: events.length, // Liczba wydarzeń
+          itemBuilder: (context, index) {
+            final event =
+            events[index]; // Pobranie konkretnego wydarzenia
+            return EventCard(
+              event: event,
+              onUpdate: (updatedEvent) {
+                setState(() {
+                  events[index] = updatedEvent; // Aktualizacja wydarzenia
+                });
+              },
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        height: 80,
+        color: Colors.white,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              onPressed: () => _onBarTapped(0), // Strona główna
+              icon: Icon(Icons.home, color: Colors.black),
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        elevation: 0,
-        enableFeedback: false,
-        backgroundColor: Colors.black54,
-        currentIndex: _selectedFromBottomBar,
-        onTap: _onBarTapped,
-        showUnselectedLabels: false,
-        showSelectedLabels: false,
-        selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'dołącz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.filter_alt_outlined),
-            label: 'filtruj',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'profil',
-          ),
-        ],
+            IconButton(
+              onPressed: () => _onBarTapped(1), // Grywalizacja TODO
+              icon: Icon(Icons.hive, color: Colors.black),
+            ),
+            FloatingActionButton(
+              onPressed: () => _onBarTapped(2), // Dodawanie wydarzenia
+              backgroundColor: Colors.amber,
+              elevation: 10.0, // Wysokość unoszeinie się przycisku - tworzenie cienia
+              child: Icon(Icons.add, size: 28,),
+            ),
+            IconButton(
+              onPressed: () => _onBarTapped(3), // Filtry
+              icon: Icon(Icons.filter_alt_outlined, color: Colors.black),
+            ),
+            IconButton(
+              onPressed: () => _onBarTapped(4), // Profil użytkownika
+              icon: Icon(Icons.person, color: Colors.black),
+            )
+          ],
+        ),
       ),
     );
   }
