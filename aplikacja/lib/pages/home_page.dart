@@ -8,6 +8,7 @@ import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
 import '../services/event_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
@@ -35,9 +36,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+        overlays: [SystemUiOverlay.bottom]
+    );
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
   }
+
 
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
@@ -268,32 +274,42 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
+        // Przejdź do strony głównej
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  CreateEventPage(onEventCreated: (newEvent) {
-                    setState(() {
-                      events.add(newEvent);
-                      // _filteredEvents = widget.events;
-                    });
-                  }),
+              builder: (context) => HomePage(events: []),
             ),
           );
           break;
         case 1:
-          showFilterModalBottomSheet();
+        // Hive (nic nie robi)
           break;
         case 2:
+        // Dodawanie wydarzenia
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
+                setState(() {
+                  events.add(newEvent);
+                });
+              }),
+            ),
+          );
+          break;
+        case 3:
+        // Filtrowanie
+          showFilterModalBottomSheet();
+          break;
+        case 4:
+        // Profil użytkownika
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ProfilePage(),
             ),
           );
-          break;
-        case 3:
-          showSortingModalBottomSheet();
           break;
       }
     });
@@ -303,14 +319,23 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.amber,
         title: isSearching
             ? TextField(
           controller: _searchController,
           decoration: InputDecoration(
             hintText: "Szukaj...",
-            border: InputBorder.none,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.8),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16),
             suffixIcon: IconButton(
-                onPressed: _toggleSearch, icon: Icon(Icons.clear)),
+                icon: Icon(Icons.clear, color: Colors.black),
+                onPressed: _toggleSearch,
+            ),
           ),
           onSubmitted: _onSearch,
         )
@@ -347,32 +372,36 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        elevation: 0,
-        enableFeedback: false,
-        backgroundColor: Colors.black54,
-        currentIndex: _selectedFromBottomBar,
-        onTap: _onBarTapped,
-        showUnselectedLabels: false,
-        showSelectedLabels: false,
-        selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'dołącz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.filter_alt_outlined),
-            label: 'filtruj',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'profil',
-          ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.import_export), label: 'sortuj')
-        ],
+      bottomNavigationBar: BottomAppBar(
+        height: 80,
+        color: Colors.white,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              onPressed: () => _onBarTapped(0), // Strona główna
+              icon: Icon(Icons.home, color: Colors.black),
+            ),
+            IconButton(
+              onPressed: () => _onBarTapped(1), // Grywalizacja TODO
+              icon: Icon(Icons.hive, color: Colors.black),
+            ),
+            FloatingActionButton(
+              onPressed: () => _onBarTapped(2), // Dodawanie wydarzenia
+              backgroundColor: Colors.amber,
+              elevation: 10.0, // Wysokość unoszeinie się przycisku - tworzenie cienia
+              child: Icon(Icons.add, size: 28,),
+            ),
+            IconButton(
+              onPressed: () => _onBarTapped(3), // Filtry
+              icon: Icon(Icons.filter_alt_outlined, color: Colors.black),
+            ),
+            IconButton(
+              onPressed: () => _onBarTapped(4), // Profil użytkownika
+              icon: Icon(Icons.person, color: Colors.black),
+            )
+          ],
+        ),
       ),
     );
   }
