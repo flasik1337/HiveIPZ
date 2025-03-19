@@ -6,6 +6,7 @@ class DatabaseHelper {
   // 'http://212.127.78.92:5000';
   static const String link = 'https://vps.jakosinski.pl:5000';
 
+
   static Future<void> addUser(
       String name,
       String surname,
@@ -396,4 +397,17 @@ class DatabaseHelper {
       throw Exception(error);
     }
   }
+
+  static Future<List<String>> getEventParticipants(String eventId) async {
+  final url = Uri.parse('$link/events/$eventId/participants');
+  final response = await http.get(url);
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body) as List<dynamic>;
+    return data.map((e) => e['nickName'] as String).toList();
+  } else {
+    throw Exception('Nie udało się pobrać listy uczestników');
+  }
+}
+
+
 }

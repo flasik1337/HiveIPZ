@@ -685,7 +685,25 @@ def verify_password():
 def mainPage():
    return "Ahoj"
 
+@app.route('/events/<event_id>/participants', methods=['GET'])
+def get_event_participants(event_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = """
+        SELECT users.nickName FROM event_participants
+        JOIN users ON event_participants.user_id = users.id
+        WHERE event_participants.event_id = %s
+        """
+        cursor.execute(sql, (event_id,))
+        participants = cursor.fetchall()
+
+        return jsonify(participants), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     ip = get_local_ip()
     app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
                      '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
+
