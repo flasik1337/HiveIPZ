@@ -72,7 +72,7 @@ def register():
         imie = data['name']
         nazwisko = data['surname']
         wiek = data['age']
-        nickname = data['nickname']
+        nickname = data['nickName']
         email = data['email']
         password = data['password']
 
@@ -84,7 +84,7 @@ def register():
         verification_token = secrets.token_urlsafe(32)
 
         sql = """
-        INSERT INTO users (nickname, imie, nazwisko, wiek, email, password, is_verified, verification_token)
+        INSERT INTO users (nickName, imie, nazwisko, wiek, email, password, is_verified, verification_token)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         val = (nickname, imie, nazwisko, wiek, email, password, 0, verification_token)
@@ -700,7 +700,7 @@ def get_event_participants(event_id):
         return jsonify(participants), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
 
 if __name__ == '__main__':
     ip = get_local_ip()
