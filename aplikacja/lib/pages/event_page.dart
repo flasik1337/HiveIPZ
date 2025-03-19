@@ -30,6 +30,8 @@ class _EventPageState extends State<EventPage> {
     _initializeUser(); // Inicjalizacja użytkownika
   }
 
+
+
   Future<void> _initializeUser() async {
     try {
       userId = await DatabaseHelper.getUserIdFromToken();
@@ -52,6 +54,44 @@ class _EventPageState extends State<EventPage> {
       print('Błąd podczas pobierania wydarzenia: $e');
     }
   }
+
+  void _showParticipantsModal(BuildContext context) async {
+    List<String> participants = await DatabaseHelper.getEventParticipants(currentEvent.id);
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          height: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Lista uczestników',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              Expanded(
+                child: participants.isEmpty
+                    ? const Center(child: Text('Brak uczestników'))
+                    : ListView.builder(
+                        itemCount: participants.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            leading: const Icon(Icons.person),
+                            title: Text(participants[index]),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   void _checkIfUserIsOwner() {
     if (userId != null) {
@@ -217,6 +257,13 @@ class _EventPageState extends State<EventPage> {
                 child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
               ),
             ),
+             Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton(
+              onPressed: () => _showParticipantsModal(context),
+              child: const Text('Zobacz uczestników'),
+            ),
+          ),
         ],
       ),
     );
