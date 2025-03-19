@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../pages/password_change_page.dart';
+import '../pages/event_preferences_page.dart';
+
 
 /// Strona ustawień użytkownika
 class SettingsPage extends StatefulWidget {
@@ -257,6 +259,20 @@ class _SettingsPageState extends State<SettingsPage> {
               // Obsługa kliknięcia w ustawienia profilu
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.event),
+            title: const Text('Preferencje wydarzeń'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EventPreferencesPage(),
+                ),
+              );
+            },
+          ),
+
           Divider(),
           ListTile(
             title: Row(
@@ -549,6 +565,7 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
           ],
         ),
       ),
+      
     );
   }
 }
