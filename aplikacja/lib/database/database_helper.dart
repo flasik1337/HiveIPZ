@@ -154,7 +154,6 @@ class DatabaseHelper {
       final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
       throw Exception(error);
     }
-
   }
 
   // Usuwanie wydarzeń

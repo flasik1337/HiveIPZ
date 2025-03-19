@@ -26,6 +26,7 @@ class _EventPageState extends State<EventPage> {
   void initState() {
     super.initState();
     currentEvent = widget.event;
+    _fetchEvent();
     _initializeUser(); // Inicjalizacja użytkownika
   }
 
@@ -38,10 +39,18 @@ class _EventPageState extends State<EventPage> {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
   }
-  void _updateEvent(Event updatedEvent) {
-    setState(() {
-      currentEvent = updatedEvent;
-    });
+
+  Future<void> _fetchEvent() async {
+    try {
+      final eventData = await DatabaseHelper.getEvent(widget.event.id);
+      if (eventData != null) {
+        setState(() {
+          currentEvent = Event.fromJson(eventData);
+        });
+      }
+    } catch (e) {
+      print('Błąd podczas pobierania wydarzenia: $e');
+    }
   }
 
   void _checkIfUserIsOwner() {

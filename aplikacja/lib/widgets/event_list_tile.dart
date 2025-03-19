@@ -53,7 +53,7 @@ class EventListTile extends StatelessWidget {
                       width: 60,
                       height: 50,
                       alignment: Alignment.center,
-                      child: event.getIcon(event.type),
+                      child: Event.getIcon(event.type),
                   ),
                   Expanded(
                     child: Column(

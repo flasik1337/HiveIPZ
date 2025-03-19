@@ -97,7 +97,7 @@ class Event {
     return (result);
   }
 
-  Future<bool> assetExists(String assetPath) async {
+  static Future<bool> assetExists(String assetPath) async {
     try {
       await rootBundle.load(assetPath);
       return true; // plik istnieje
@@ -106,7 +106,7 @@ class Event {
     }
   }
 
-  Widget getIcon(String eventType) {
+  static Widget getIcon(String eventType) {
     String iconPath = "assets/type_icons/$eventType.svg";
 
     return FutureBuilder<bool>(
