@@ -701,6 +701,31 @@ def get_event_participants(event_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+@app.route('/get_user_preferences', methods=['GET'])
+def get_user_preferences():
+    user_id = request.args.get('user_id')
+
+    cursor = mydb.cursor(dictionary=True)
+    cursor.execute("SELECT has_set_preferences FROM users WHERE id = %s", (user_id,))
+    result = cursor.fetchone()
+
+    if result is None:
+        return jsonify({'error': 'Użytkownik nie istnieje'}), 404
+
+    return jsonify({'hasSetPreferences': result['has_set_preferences']}), 200
+
+
+@app.route('/set_user_preferences', methods=['POST'])
+def set_user_preferences():
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    cursor = mydb.cursor()
+    cursor.execute("UPDATE users SET has_set_preferences = TRUE WHERE id = %s", (user_id,))
+    mydb.commit()
+
+    return jsonify({'message': 'Preferencje zapisane'}), 200
+    
 
 if __name__ == '__main__':
     ip = get_local_ip()

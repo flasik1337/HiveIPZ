@@ -107,6 +107,11 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
   }
+  Future<String?> getUserIdFromPrefs() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('userId');
+}
+
 
   Future<bool> _showLogoutConfirmationDialog(BuildContext context) async {
     return await showDialog<bool>(
@@ -263,14 +268,20 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.event),
             title: const Text('Preferencje wydarzeń'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EventPreferencesPage(),
-                ),
-              );
+            onTap: () async {
+              String? userId = await getUserIdFromPrefs();
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => EventPreferencesPage(userId: userId)),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Błąd pobierania danych użytkownika')),
+                );
+              }
             },
+
           ),
 
           Divider(),
