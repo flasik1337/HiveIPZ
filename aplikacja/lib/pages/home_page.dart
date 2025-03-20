@@ -30,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   bool isSearching = false;
   int selectedSortingType = 0;
   bool sortingAscending = false;
+  double searchBarWidth = 56;
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
   List<String> recentSearches = ['pudzian', 'kremówki', 'mariusz'];
@@ -91,6 +92,7 @@ class _HomePageState extends State<HomePage> {
   void _toggleSearch() {
     setState(() {
       isSearching = !isSearching;
+      searchBarWidth = isSearching ? MediaQuery.of(context).size.width - 32 : 56;
       if (!isSearching) _searchController.clear();
     });
   }
@@ -316,62 +318,54 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: isSearching
-          ? AppBar(
-              backgroundColor: Colors.transparent,
-              title: isSearching
-                  ? TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: "Szukaj...",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.8),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                        suffixIcon: IconButton(
-                          icon: Icon(Icons.clear, color: Colors.black),
-                          onPressed: _toggleSearch,
-                        ),
-                      ),
-                      onSubmitted: _onSearch,
-                    )
-                  : const Text('Strona Główna'),
-              actions: [
-                if (!isSearching)
-                  IconButton(
-                    onPressed: _toggleSearch,
-                    icon: Icon(Icons.search),
-                  )
-              ],
-            )
-          : null,
       body: Stack(
         children: [
           // Główna zawartość strony
           events.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
-            onRefresh: _fetchAllEvents,
-            child: PageView.builder(
-              scrollDirection: Axis.vertical,
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                final event = events[index];
-                return EventCard(
-                  event: event,
-                  onUpdate: (updatedEvent) {
-                    setState(() {
-                      events[index] = updatedEvent;
-                    });
-                  },
-                );
-              },
-            ),
-          ),
+                  onRefresh: _fetchAllEvents,
+                  child: PageView.builder(
+                    scrollDirection: Axis.vertical,
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(
+                        event: event,
+                        onUpdate: (updatedEvent) {
+                          setState(() {
+                            events[index] = updatedEvent;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
 
+          if (isSearching)
+            Positioned(
+                top: 50,
+                right: 16,
+                left: 16,
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: "Szukaj...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: HiveColors.weakAccent,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                    suffixIcon: IconButton(
+                        onPressed: _toggleSearch,
+                        icon: Icon(Icons.clear, color: Colors.black),
+                    ),
+                  ),
+                  onSubmitted: _onSearch,
+                ),
+            ),
           // FloatingActionButton w prawym górnym rogu
           if (!isSearching)
             Positioned(
@@ -386,7 +380,6 @@ class _HomePageState extends State<HomePage> {
             ),
         ],
       ),
-
       bottomNavigationBar: BottomAppBar(
         height: 80,
         color: Colors.white,
