@@ -358,7 +358,7 @@ class _HomePageState extends State<HomePage> {
               width: searchBarWidth,
               height: 56,
               decoration: BoxDecoration(
-                color: Colors.amber,
+                color: isSearching ? HiveColors.weakAccent : HiveColors.main,
                 borderRadius: BorderRadius.circular(isSearching ? 30 : 28),
               ),
               child: isSearching
