@@ -7,6 +7,7 @@ class DatabaseHelper {
   static const String link = 'https://vps.jakosinski.pl:5000';
 
 
+
   static Future<void> addUser(
       String name,
       String surname,
@@ -46,7 +47,7 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nickName': nickName, 'password': password}),
       );
-
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data; // Zwracamy CAŁY obiekt odpowiedzi
@@ -407,7 +408,39 @@ class DatabaseHelper {
   } else {
     throw Exception('Nie udało się pobrać listy uczestników');
   }
+  }
+
+  static Future<bool> getUserPreferences(String userId) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$link/get_user_preferences?user_id=$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final hasSetPreferences = (data['hasSetPreferences'] == 1);
+      return hasSetPreferences;
+    } else {
+      throw Exception("Błąd API: ${response.statusCode} - ${response.body}");
+    }
+  } catch (e) {
+    print("Błąd pobierania preferencji użytkownika: $e");
+    return false;
+  }
+}
+
+    static Future<void> setUserPreferences(String userId) async {
+    final response = await http.post(
+      Uri.parse('$link/set_user_preferences'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': userId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Błąd zapisu preferencji użytkownika');
+    }
+  }
 }
 
 
-}
+

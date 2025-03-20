@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart';
+import 'package:Hive/database/database_helper.dart';
+
 
 class EventPreferencesPage extends StatefulWidget {
-  const EventPreferencesPage({super.key});
+  final String userId;
+
+  const EventPreferencesPage({super.key, required this.userId});
 
   @override
   _EventPreferencesPageState createState() => _EventPreferencesPageState();
 }
+
 
 class _EventPreferencesPageState extends State<EventPreferencesPage> {
   final List<Map<String, dynamic>> eventTypes = [
@@ -27,12 +33,6 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
         selectedEvents.add(eventType);
       }
     });
-  }
-
-  void _savePreferences() {
-    // Tu możesz dodać logikę zapisu do bazy danych
-    print('Zapisano preferencje: $selectedEvents');
-    Navigator.pop(context);
   }
 
   @override
@@ -94,7 +94,13 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
-              onPressed: _savePreferences,
+              onPressed: () async {
+                await DatabaseHelper.setUserPreferences(widget.userId);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomePage(events: [])),
+                );
+              },
               child: const Text('Zapisz i kontynuuj'),
             ),
           ),

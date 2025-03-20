@@ -63,7 +63,19 @@ class MyApp extends StatelessWidget {
         '/account': (context) => ProfilePage(),
         '/settings': (context) => SettingsPage(),
         '/change_password': (context) => PasswordResetPage(),
-        '/event_preferences': (context) => const EventPreferencesPage(),
+        '/event_preferences': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+        final userId = args?['userId'] as String?;
+
+        if (userId != null) {
+          return EventPreferencesPage(userId: userId);
+        } else {
+          return const Scaffold(
+            body: Center(child: Text('Błąd: Brak ID użytkownika')),
+          );
+        }
+      },
+
 
       },
     );
