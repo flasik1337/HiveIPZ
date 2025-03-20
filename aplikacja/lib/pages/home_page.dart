@@ -1,3 +1,4 @@
+import 'package:Hive/styles/hive_colors.dart';
 import 'package:Hive/widgets/event_type_grid.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
@@ -36,14 +37,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-        overlays: [SystemUiOverlay.bottom]
-    );
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: [SystemUiOverlay.bottom]);
+    isSearching = false;
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
   }
-
 
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
@@ -69,14 +68,13 @@ class _HomePageState extends State<HomePage> {
   void sortEventsByPrice(bool ascending) {
     setState(() {
       events.sort((a, b) =>
-      ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
+          ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
     });
   }
 
   void sortEventsByParticipants(bool ascending) {
     setState(() {
-      events.sort((a, b) =>
-      ascending
+      events.sort((a, b) => ascending
           ? a.registeredParticipants.compareTo(b.registeredParticipants)
           : b.registeredParticipants.compareTo(a.registeredParticipants));
     });
@@ -84,9 +82,9 @@ class _HomePageState extends State<HomePage> {
 
   void sortEventsByDate(bool ascending) {
     setState(() {
-      events.sort((a, b) =>
-      ascending ? a.startDate.compareTo(b.startDate) : b
-          .startDate.compareTo(a.startDate));
+      events.sort((a, b) => ascending
+          ? a.startDate.compareTo(b.startDate)
+          : b.startDate.compareTo(a.startDate));
     });
   }
 
@@ -128,9 +126,9 @@ class _HomePageState extends State<HomePage> {
                         builder: (BuildContext context) {
                           return EventTypeGrid(
                               onEventTypeSelected: (String typeFilter) {
-                                EventFilterService.filterEventsByType(
-                                    context, events, typeFilter);
-                              });
+                            EventFilterService.filterEventsByType(
+                                context, events, typeFilter);
+                          });
                         });
                   }),
               ListTile(
@@ -196,8 +194,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 1
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -219,8 +217,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 2
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -242,8 +240,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 3
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -274,7 +272,7 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-        // Przejdź do strony głównej
+          // Przejdź do strony głównej
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -283,10 +281,10 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 1:
-        // Hive (nic nie robi)
+          // Hive (nic nie robi)
           break;
         case 2:
-        // Dodawanie wydarzenia
+          // Dodawanie wydarzenia
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -299,11 +297,11 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 3:
-        // Filtrowanie
+          // Filtrowanie
           showFilterModalBottomSheet();
           break;
         case 4:
-        // Profil użytkownika
+          // Profil użytkownika
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -318,60 +316,77 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.amber,
-        title: isSearching
-            ? TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: "Szukaj...",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.8),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16),
-            suffixIcon: IconButton(
-                icon: Icon(Icons.clear, color: Colors.black),
-                onPressed: _toggleSearch,
+      appBar: isSearching
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              title: isSearching
+                  ? TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: "Szukaj...",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.8),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                        suffixIcon: IconButton(
+                          icon: Icon(Icons.clear, color: Colors.black),
+                          onPressed: _toggleSearch,
+                        ),
+                      ),
+                      onSubmitted: _onSearch,
+                    )
+                  : const Text('Strona Główna'),
+              actions: [
+                if (!isSearching)
+                  IconButton(
+                    onPressed: _toggleSearch,
+                    icon: Icon(Icons.search),
+                  )
+              ],
+            )
+          : null,
+      body: Stack(
+        children: [
+          // Główna zawartość strony
+          events.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+            onRefresh: _fetchAllEvents,
+            child: PageView.builder(
+              scrollDirection: Axis.vertical,
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return EventCard(
+                  event: event,
+                  onUpdate: (updatedEvent) {
+                    setState(() {
+                      events[index] = updatedEvent;
+                    });
+                  },
+                );
+              },
             ),
           ),
-          onSubmitted: _onSearch,
-        )
-            : const Text('Strona Główna'),
-        actions: [
+
+          // FloatingActionButton w prawym górnym rogu
           if (!isSearching)
-            IconButton(
-              onPressed: _toggleSearch,
-              icon: Icon(Icons.search),
-            )
+            Positioned(
+              top: 50,
+              right: 16,
+              child: FloatingActionButton.small(
+                onPressed: _toggleSearch,
+                backgroundColor: Colors.amber,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.search, color: Colors.black),
+              ),
+            ),
         ],
       ),
-      body: events.isEmpty
-          ? const Center(
-        child:
-        CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
-        child: PageView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: events.length, // Liczba wydarzeń
-          itemBuilder: (context, index) {
-            final event =
-            events[index]; // Pobranie konkretnego wydarzenia
-            return EventCard(
-              event: event,
-              onUpdate: (updatedEvent) {
-                setState(() {
-                  events[index] = updatedEvent; // Aktualizacja wydarzenia
-                });
-              },
-            );
-          },
-        ),
-      ),
+
       bottomNavigationBar: BottomAppBar(
         height: 80,
         color: Colors.white,
@@ -387,10 +402,15 @@ class _HomePageState extends State<HomePage> {
               icon: Icon(Icons.hive, color: Colors.black),
             ),
             FloatingActionButton(
-              onPressed: () => _onBarTapped(2), // Dodawanie wydarzenia
+              onPressed: () => _onBarTapped(2),
+              // Dodawanie wydarzenia
               backgroundColor: Colors.amber,
-              elevation: 10.0, // Wysokość unoszeinie się przycisku - tworzenie cienia
-              child: Icon(Icons.add, size: 28,),
+              elevation: 10.0,
+              // Wysokość unoszeinie się przycisku - tworzenie cienia
+              child: Icon(
+                Icons.add,
+                size: 28,
+              ),
             ),
             IconButton(
               onPressed: () => _onBarTapped(3), // Filtry
