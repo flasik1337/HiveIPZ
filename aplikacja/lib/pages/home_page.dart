@@ -25,12 +25,11 @@ class _HomePageState extends State<HomePage> {
   List<Event> events = [];
   int _selectedFromBottomBar = 0;
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _bottomCenaController = TextEditingController();
-  final TextEditingController _upCenaController = TextEditingController();
   bool isSearching = false;
   int selectedSortingType = 0;
   bool sortingAscending = false;
   double searchBarWidth = 56;
+  final FocusNode _searchFocusNode = FocusNode();
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
   List<String> recentSearches = ['pudzian', 'kremówki', 'mariusz'];
@@ -93,7 +92,14 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       isSearching = !isSearching;
       searchBarWidth = isSearching ? MediaQuery.of(context).size.width - 32 : 56;
-      if (!isSearching) _searchController.clear();
+      if (isSearching) {
+        Future.delayed(Duration(milliseconds: 300), () {
+          _searchFocusNode.requestFocus();
+        });
+      } else {
+        _searchFocusNode.unfocus(); //
+        _searchController.clear();
+      }
     });
   }
 
@@ -342,42 +348,49 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
-          if (isSearching)
-            Positioned(
-                top: 50,
-                right: 16,
-                left: 16,
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: "Szukaj...",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: HiveColors.weakAccent,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                    suffixIcon: IconButton(
-                        onPressed: _toggleSearch,
-                        icon: Icon(Icons.clear, color: Colors.black),
+          Positioned(
+            top: 50,
+            right: 16,
+            left: isSearching ? 16 : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOutCirc,
+              width: searchBarWidth,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                borderRadius: BorderRadius.circular(isSearching ? 30 : 28),
+              ),
+              child: isSearching
+                  ? Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: "Szukaj...",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onSubmitted: (query) {
+                        _onSearch(query);
+                        _toggleSearch();
+                      },
                     ),
                   ),
-                  onSubmitted: _onSearch,
-                ),
-            ),
-          // FloatingActionButton w prawym górnym rogu
-          if (!isSearching)
-            Positioned(
-              top: 50,
-              right: 16,
-              child: FloatingActionButton.small(
+                  IconButton(
+                    icon: Icon(Icons.close, color: Colors.black),
+                    onPressed: _toggleSearch,
+                  ),
+                ],
+              )
+                  : IconButton(
+                icon: Icon(Icons.search, color: Colors.black),
                 onPressed: _toggleSearch,
-                backgroundColor: Colors.amber,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.search, color: Colors.black),
               ),
             ),
+          ),
         ],
       ),
       bottomNavigationBar: BottomAppBar(
