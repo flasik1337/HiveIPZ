@@ -10,7 +10,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
-
+import 'event_page.dart';
+import "package:flutter/material.dart";
+import '../models/event.dart';
+import '../pages/event_page.dart';
+import '../styles/text_styles.dart';
+import '../styles/hive_colors.dart';
 
 /// Strona profilu użytkownika
 class ProfilePage extends StatefulWidget {
@@ -22,11 +27,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? userData;
+  List<dynamic>? userEvents = [];
   int? userId;
   File? _localImage;
-
-
-  get userEvents => null;
 
   @override
   void initState() {
@@ -63,7 +66,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-
   Future<void> _fetchUserEvents() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -78,7 +80,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // Ignorowanie błędów certyfikatu (TYLKO NA TESTY!)
       final ioc = HttpClient()
-        ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+        ..badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
       final httpClient = IOClient(ioc);
 
       final response = await httpClient.get(
@@ -92,21 +95,21 @@ class _ProfilePageState extends State<ProfilePage> {
       if (response.statusCode == 200) {
         final List<dynamic> events = jsonDecode(response.body);
         setState(() {
-          var userEvents = events;
+          userEvents = events;
         });
       } else {
-        throw Exception("Błąd podczas pobierania wydarzeń: ${response.statusCode}");
+        throw Exception(
+            "Błąd podczas pobierania wydarzeń: ${response.statusCode}");
       }
     } catch (e) {
       print('Błąd podczas pobierania wydarzeń: $e');
     }
   }
 
-
-
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile =
+        await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       final File file = File(pickedFile.path);
@@ -132,7 +135,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _saveImageLocally(File image) async {
     final directory = await getApplicationDocumentsDirectory();
-    final File newImage = await image.copy('${directory.path}/profile_image.png');
+    final File newImage =
+        await image.copy('${directory.path}/profile_image.png');
 
     setState(() {
       _localImage = newImage;
@@ -174,12 +178,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
         if (response.statusCode == 200) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Zdjęcie profilowe zostało zmienione!')),
+            const SnackBar(
+                content: Text('Zdjęcie profilowe zostało zmienione!')),
           );
 
           // Opcjonalnie: zaktualizuj obraz w interfejsie
           setState(() {
-            userData?['profileImage'] = '<ścieżka_na_serwerze>'; // Zaktualizuj, jeśli serwer zwraca URL
+            userData?['profileImage'] =
+                '<ścieżka_na_serwerze>'; // Zaktualizuj, jeśli serwer zwraca URL
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -237,6 +243,10 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
+    List<Event> events = userEvents!
+        .map((dynamic event) => Event.fromJson(event as Map<String, dynamic>))
+        .toList();
+
     return Scaffold(
       body: Stack(
         children: [
@@ -277,8 +287,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundImage: _localImage != null
                       ? FileImage(_localImage!)
                       : userData != null && userData!['profileImage'] != null
-                      ? NetworkImage(userData!['profileImage']) // Ładowanie z serwera
-                      : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                          ? NetworkImage(
+                              userData!['profileImage']) // Ładowanie z serwera
+                          : const AssetImage('assets/default_avatar.png')
+                              as ImageProvider,
                   backgroundColor: Colors.white,
                 ),
               ),
@@ -291,36 +303,92 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: HiveTextStyles.title,
               ),
               const SizedBox(height: 20),
-              // Biały kontener z zaokrąglonymi rogami
               Expanded(
                 child: Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(10),
                     ),
                   ),
-                  child: userEvents == null || userEvents!.isEmpty
+                  child: (userEvents == null || userEvents!.isEmpty)
                       ? const Center(
-                    child: Text(
-                      'Brak przyszłych wydarzeń',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  )
-                      : ListView.builder(
-                    itemCount: userEvents!.length,
-                    itemBuilder: (context, index) {
-                      final event = userEvents![index];
-                      return ListTile(
-                        title: Text(event['name']),
-                        subtitle: Text(event['start_date']),
-                      );
-                    },
-                  ),
+                          child: Text(
+                            'Brak przyszłych wydarzeń',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        )
+                      : GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10.0, // Odstępy między kolumnami
+                            mainAxisSpacing: 10.0, // Odstępy między wierszami
+                            childAspectRatio:
+                                1.0, // Równy stosunek szerokości do wysokości
+                          ),
+                          itemCount: userEvents!.length,
+                          itemBuilder: (context, index) {
+                            final event = Event.fromJson(
+                                userEvents![index] as Map<String, dynamic>);
+
+                            return GridTile(
+                                child: Card(
+                              elevation: 5.0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Container(
+                                width: double.infinity, // Pełna szerokość
+                                height: double.infinity, // Pełna wysokość
+                                decoration: BoxDecoration(
+                                  color: Colors.yellow,
+                                  // Żółte tło całego GridTile
+                                  borderRadius: BorderRadius.circular(
+                                      10), // Zaokrąglone rogi
+                                ),
+
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  // Wyśrodkowanie zawartości
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 160,
+                                      // Szerokość kontenera (możesz dostosować)
+                                      height: 160,
+                                      // Wysokość kontenera (możesz dostosować)
+                                      decoration: BoxDecoration(
+                                        color: HiveColors.main,
+                                        // Żółte tło kontenera
+                                        borderRadius: BorderRadius.circular(
+                                            10), // Zaokrąglenie rogów
+                                      ),
+                                      child: Center(
+                                        // Wyśrodkowanie obrazu w kontenerze
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          // Zaokrąglenie rogów obrazu
+                                          child: Image.asset(
+                                            event
+                                                .imagePath, // Ścieżka do obrazu
+                                            fit: BoxFit
+                                                .cover, // Dopasowanie obrazu do kontenera
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ));
+                          },
+                        ),
                 ),
-              ),
+              )
             ],
           ),
         ],
