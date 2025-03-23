@@ -5,6 +5,8 @@ import 'home_page.dart';
 import '../models/event.dart';
 import 'registration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'event_preferences_page.dart';
+
 
 class SignInPage extends StatefulWidget {
   final List<Event> events;
@@ -39,7 +41,7 @@ class _SignInPageState extends State<SignInPage> {
     await prefs.setString('token', token);
   }
 
-  Future<void> _signIn() async {
+   Future<void> _signIn() async {
     final nickName = _loginController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -52,15 +54,25 @@ class _SignInPageState extends State<SignInPage> {
 
     try {
       final userData = await DatabaseHelper.getUser(nickName, password);
-
+      
       if (userData != null) {
+        await saveToken(userData['token']);
+        final userId = userData['user']['id']?.toString();
+
+        if (userId == null) {
+          throw Exception("userId jest null!");
+        }
+
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', userId);
+
+        // Sprawdzamy, czy użytkownik ma ustawiony PIN
         final storedPin = prefs.getString('pin_') ?? '';
 
         if (storedPin.isNotEmpty) {
           _showPinVerificationDialog(userData, storedPin);
         } else {
-          _completeLogin(userData['token']);
+          _completeLogin(userData['token'], userId);
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,22 +80,45 @@ class _SignInPageState extends State<SignInPage> {
         );
       }
     } catch (e) {
+      print(" Błąd logowania: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Błąd połączenia: $e')),
       );
     }
   }
+   
+void _completeLogin(String token, String userId) async {
+  await saveToken(token);
+  
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Zalogowano pomyślnie')),
+  );
 
-  void _completeLogin(String token) async {
-    await saveToken(token);
+  try {
+    bool hasPreferences = await DatabaseHelper.getUserPreferences(userId);
+    await Future.delayed(const Duration(milliseconds: 500)); 
+
+    if (!hasPreferences) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => EventPreferencesPage(userId: userId)),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage(events: [])),
+      );
+    }
+  } catch (e) {
+    print(" Błąd pobierania preferencji: $e");
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Zalogowano pomyślnie')),
-    );
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => HomePage(events: [])),
+      SnackBar(content: Text('Błąd podczas sprawdzania preferencji: $e')),
     );
   }
+}
+
+
+  
 
   void _showPinVerificationDialog(Map<String, dynamic> userData, String storedPin) {
     showDialog(
@@ -120,7 +155,7 @@ class _SignInPageState extends State<SignInPage> {
               if (enteredPin == storedPin) {
                 _pinController.clear(); // Wyczyść pole PINu
                 Navigator.pop(context);
-                _completeLogin(userData['token']);
+                _completeLogin(userData['token'], userData['id'].toString());
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Nieprawidłowy PIN')),

@@ -1,3 +1,4 @@
+import 'package:Hive/styles/hive_colors.dart';
 import 'package:Hive/widgets/event_type_grid.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
@@ -24,11 +25,11 @@ class _HomePageState extends State<HomePage> {
   List<Event> events = [];
   int _selectedFromBottomBar = 0;
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _bottomCenaController = TextEditingController();
-  final TextEditingController _upCenaController = TextEditingController();
   bool isSearching = false;
   int selectedSortingType = 0;
   bool sortingAscending = false;
+  double searchBarWidth = 56;
+  final FocusNode _searchFocusNode = FocusNode();
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
   List<String> recentSearches = ['pudzian', 'kremówki', 'mariusz'];
@@ -36,14 +37,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-        overlays: [SystemUiOverlay.bottom]
-    );
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: [SystemUiOverlay.bottom]);
+    isSearching = false;
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
   }
-
 
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
@@ -69,14 +68,13 @@ class _HomePageState extends State<HomePage> {
   void sortEventsByPrice(bool ascending) {
     setState(() {
       events.sort((a, b) =>
-      ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
+          ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
     });
   }
 
   void sortEventsByParticipants(bool ascending) {
     setState(() {
-      events.sort((a, b) =>
-      ascending
+      events.sort((a, b) => ascending
           ? a.registeredParticipants.compareTo(b.registeredParticipants)
           : b.registeredParticipants.compareTo(a.registeredParticipants));
     });
@@ -84,16 +82,24 @@ class _HomePageState extends State<HomePage> {
 
   void sortEventsByDate(bool ascending) {
     setState(() {
-      events.sort((a, b) =>
-      ascending ? a.startDate.compareTo(b.startDate) : b
-          .startDate.compareTo(a.startDate));
+      events.sort((a, b) => ascending
+          ? a.startDate.compareTo(b.startDate)
+          : b.startDate.compareTo(a.startDate));
     });
   }
 
   void _toggleSearch() {
     setState(() {
       isSearching = !isSearching;
-      if (!isSearching) _searchController.clear();
+      searchBarWidth = isSearching ? MediaQuery.of(context).size.width - 32 : 56;
+      if (isSearching) {
+        Future.delayed(Duration(milliseconds: 300), () {
+          _searchFocusNode.requestFocus();
+        });
+      } else {
+        _searchFocusNode.unfocus(); //
+        _searchController.clear();
+      }
     });
   }
 
@@ -128,9 +134,9 @@ class _HomePageState extends State<HomePage> {
                         builder: (BuildContext context) {
                           return EventTypeGrid(
                               onEventTypeSelected: (String typeFilter) {
-                                EventFilterService.filterEventsByType(
-                                    context, events, typeFilter);
-                              });
+                            EventFilterService.filterEventsByType(
+                                context, events, typeFilter);
+                          });
                         });
                   }),
               ListTile(
@@ -196,8 +202,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 1
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -219,8 +225,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 2
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -242,8 +248,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 3
                         ? Icon(sortingAscending
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down)
+                            ? Icons.arrow_drop_up
+                            : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -274,7 +280,7 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-        // Przejdź do strony głównej
+          // Przejdź do strony głównej
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -283,10 +289,10 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 1:
-        // Hive (nic nie robi)
+          // Hive (nic nie robi)
           break;
         case 2:
-        // Dodawanie wydarzenia
+          // Dodawanie wydarzenia
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -299,11 +305,11 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 3:
-        // Filtrowanie
+          // Filtrowanie
           showFilterModalBottomSheet();
           break;
         case 4:
-        // Profil użytkownika
+          // Profil użytkownika
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -318,59 +324,74 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.amber,
-        title: isSearching
-            ? TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: "Szukaj...",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.8),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16),
-            suffixIcon: IconButton(
-                icon: Icon(Icons.clear, color: Colors.black),
+      body: Stack(
+        children: [
+          // Główna zawartość strony
+          events.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _fetchAllEvents,
+                  child: PageView.builder(
+                    scrollDirection: Axis.vertical,
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(
+                        event: event,
+                        onUpdate: (updatedEvent) {
+                          setState(() {
+                            events[index] = updatedEvent;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+          Positioned(
+            top: 50,
+            right: 16,
+            left: isSearching ? 16 : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOutCirc,
+              width: searchBarWidth,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isSearching ? HiveColors.weakAccent : HiveColors.main,
+                borderRadius: BorderRadius.circular(isSearching ? 30 : 28),
+              ),
+              child: isSearching
+                  ? Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: "Szukaj...",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onSubmitted: (query) {
+                        _onSearch(query);
+                        _toggleSearch();
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: Colors.black),
+                    onPressed: _toggleSearch,
+                  ),
+                ],
+              )
+                  : IconButton(
+                icon: Icon(Icons.search, color: Colors.black),
                 onPressed: _toggleSearch,
+              ),
             ),
           ),
-          onSubmitted: _onSearch,
-        )
-            : const Text('Strona Główna'),
-        actions: [
-          if (!isSearching)
-            IconButton(
-              onPressed: _toggleSearch,
-              icon: Icon(Icons.search),
-            )
         ],
-      ),
-      body: events.isEmpty
-          ? const Center(
-        child:
-        CircularProgressIndicator(), // Wyświetlanie ładowania, jeśli lista jest pusta
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchAllEvents, // Funkcja do odświeżania
-        child: PageView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: events.length, // Liczba wydarzeń
-          itemBuilder: (context, index) {
-            final event =
-            events[index]; // Pobranie konkretnego wydarzenia
-            return EventCard(
-              event: event,
-              onUpdate: (updatedEvent) {
-                setState(() {
-                  events[index] = updatedEvent; // Aktualizacja wydarzenia
-                });
-              },
-            );
-          },
-        ),
       ),
       bottomNavigationBar: BottomAppBar(
         height: 80,
@@ -387,10 +408,15 @@ class _HomePageState extends State<HomePage> {
               icon: Icon(Icons.hive, color: Colors.black),
             ),
             FloatingActionButton(
-              onPressed: () => _onBarTapped(2), // Dodawanie wydarzenia
+              onPressed: () => _onBarTapped(2),
+              // Dodawanie wydarzenia
               backgroundColor: Colors.amber,
-              elevation: 10.0, // Wysokość unoszeinie się przycisku - tworzenie cienia
-              child: Icon(Icons.add, size: 28,),
+              elevation: 10.0,
+              // Wysokość unoszeinie się przycisku - tworzenie cienia
+              child: Icon(
+                Icons.add,
+                size: 28,
+              ),
             ),
             IconButton(
               onPressed: () => _onBarTapped(3), // Filtry

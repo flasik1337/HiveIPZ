@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/event.dart';
 
 /// Widżet realizujący siatkę wyboru pojedynczego typu wydarzenia
 class EventTypeGrid extends StatelessWidget {
@@ -12,7 +13,10 @@ class EventTypeGrid extends StatelessWidget {
     {'type': 'Impreza masowa', 'icon': 'assets/icons/default_avatar.png'},
     {'type': 'Sportowe', 'icon': 'assets/icons/default_avatar.png'},
     {'type': 'Kulturalne', 'icon': 'assets/icons/default_avatar.png'},
-    {'type': 'Spotkanie towarzyskie', 'icon': 'assets/icons/default_avatar.png'},
+    {
+      'type': 'Spotkanie towarzyskie',
+      'icon': 'assets/icons/default_avatar.png'
+    },
     {'type': 'Outdoor', 'icon': 'assets/icons/default_avatar.png'},
     {'type': 'Relaks', 'icon': 'assets/icons/default_avatar.png'},
     {'type': 'Firmowe', 'icon': 'assets/icons/default_avatar.png'},
@@ -22,7 +26,7 @@ class EventTypeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 30.0, 16.0, 16.0),
       child: GridView.builder(
         shrinkWrap: true,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -39,18 +43,15 @@ class EventTypeGrid extends StatelessWidget {
             },
             child: Column(
               children: [
-                Expanded(
-                  child: Image.asset(
-                    eventType['icon']!,
-                    fit: BoxFit.contain,
-                  ),
+                SizedBox(
+                  height: 50,
+                  width: 50,
+                  child: Event.getIcon(eventType['type']!),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   eventType['type']!,
-                  style: const TextStyle(
-                    fontSize: 14
-                  ),
+                  style: const TextStyle(fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
               ],

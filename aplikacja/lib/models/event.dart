@@ -1,3 +1,8 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart' show rootBundle;
+
 class Event {
   final String id;
   final String name;
@@ -92,5 +97,30 @@ class Event {
     return (result);
   }
 
+  static Future<bool> assetExists(String assetPath) async {
+    try {
+      await rootBundle.load(assetPath);
+      return true; // plik istnieje
+    } catch (e) {
+      return false; // plik nie istnieje
+    }
+  }
+
+  static Widget getIcon(String eventType) {
+    String iconPath = "assets/type_icons/$eventType.svg";
+
+    return FutureBuilder<bool>(
+      future: assetExists(iconPath),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Icon(Icons.hourglass_empty);
+        }
+        if (snapshot.hasError || snapshot.data == false) {
+          return Icon(Icons.hive_sharp);
+        }
+        return SvgPicture.asset(iconPath, width: 30, height: 30);
+      },
+    );
+  }
 
 }
