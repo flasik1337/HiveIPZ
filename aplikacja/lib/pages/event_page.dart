@@ -4,6 +4,7 @@ import '../styles/gradients.dart';
 import '../pages/edit_event_page.dart';
 import '../database/database_helper.dart';
 import '../styles/text_styles.dart';
+import '../widgets/payment_dialog.dart';
 
 /// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
@@ -119,7 +120,7 @@ class _EventPageState extends State<EventPage> {
   Future<void> _joinOrLeaveEvent() async {
     try {
       if (isUserJoined) {
-        // Wypisanie z wydarzenia
+        // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
         setState(() {
           isUserJoined = false;
@@ -128,27 +129,36 @@ class _EventPageState extends State<EventPage> {
           );
         });
       } else {
+        // Sprawdź limit uczestników
         if (currentEvent.maxParticipants != -1 &&
             currentEvent.registeredParticipants >= currentEvent.maxParticipants) {
-          // Jeśli liczba uczestników osiągnęła maksymalny limit
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Wydarzenie jest już pełne!'),
-            ),
+            const SnackBar(content: Text('Wydarzenie jest już pełne!')),
           );
-        } else {
-          // Zapisanie na wydarzenie
-          await DatabaseHelper.joinEvent(currentEvent.id);
-          setState(() {
-            isUserJoined = true;
-            currentEvent = currentEvent.copyWith(
-              registeredParticipants: currentEvent.registeredParticipants + 1,
-            );
-          });
+          return;
         }
+
+        // Obsługa płatności dla wydarzeń płatnych
+        if (currentEvent.cena > 0) {
+          final paymentConfirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => const PaymentDialog(),
+          );
+
+          if (paymentConfirmed != true) return;
+        }
+
+        // Zapisz użytkownika na wydarzenie
+        await DatabaseHelper.joinEvent(currentEvent.id);
+        setState(() {
+          isUserJoined = true;
+          currentEvent = currentEvent.copyWith(
+            registeredParticipants: currentEvent.registeredParticipants + 1,
+          );
+        });
       }
     } catch (e) {
-      print('Błąd podczas zapisywania/wypisywania użytkownika: $e');
+      print('Błąd podczas zapisu/wypisu: $e');
     }
   }
 
