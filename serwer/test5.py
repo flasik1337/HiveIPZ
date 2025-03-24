@@ -725,6 +725,31 @@ def set_user_preferences():
     mydb.commit()
 
     return jsonify({'message': 'Preferencje zapisane'}), 200
+
+@app.route('/user_event_preferences', methods=['GET'])
+def get_user_event_preferences():
+    user_id = request.args.get('user_id')
+    cursor = mydb.cursor(dictionary=True)
+    cursor.execute("SELECT event_type FROM user_event_preferences WHERE user_id = %s", (user_id,))
+    preferences = [row['event_type'] for row in cursor.fetchall()]
+    return jsonify({'preferences': preferences}), 200
+
+@app.route('/user_event_preferences', methods=['POST'])
+def set_user_event_preferences():
+    data = request.get_json()
+    user_id = data['user_id']
+    selected_types = data['event_types']
+
+    cursor = mydb.cursor()
+
+    cursor.execute("DELETE FROM user_event_preferences WHERE user_id = %s", (user_id,))
+    
+    for event_type in selected_types:
+        cursor.execute("INSERT INTO user_event_preferences (user_id, event_type) VALUES (%s, %s)", (user_id, event_type))
+
+    mydb.commit()
+    return jsonify({'message': 'Preferencje zaktualizowane'}), 200
+
     
 
 if __name__ == '__main__':
@@ -732,3 +757,4 @@ if __name__ == '__main__':
     app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
                      '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
 
+    #app.run(host='0.0.0.0', port=5000, debug=True)
