@@ -440,6 +440,31 @@ class DatabaseHelper {
       throw Exception('Błąd zapisu preferencji użytkownika');
     }
   }
+
+static Future<List<String>> getUserEventPreferences(String userId) async {
+  final response = await http.get(Uri.parse('$link/user_event_preferences?user_id=$userId'));
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return List<String>.from(data['preferences']);
+  } else {
+    throw Exception('Błąd pobierania preferencji użytkownika');
+  }
+}
+
+static Future<void> updateUserEventPreferences(String userId, List<String> selectedTypes) async {
+  final response = await http.post(
+    Uri.parse('$link/user_event_preferences'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'user_id': userId,
+      'event_types': selectedTypes,
+    }),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Nie udało się zaktualizować preferencji');
+  }
+}
+
 }
 
 

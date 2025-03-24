@@ -24,6 +24,15 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
   ];
 
   final Set<String> selectedEvents = {};
+  bool isLoading = true;
+
+  @override
+void initState() {
+  super.initState();
+  _loadUserPreferences();
+}
+
+  
 
   void _toggleSelection(String eventType) {
     setState(() {
@@ -34,6 +43,20 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
       }
     });
   }
+
+  Future<void> _loadUserPreferences() async {
+  try {
+    final prefs = await DatabaseHelper.getUserEventPreferences(widget.userId);
+    setState(() {
+      selectedEvents.addAll(prefs);
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Błąd podczas ładowania preferencji: $e");
+    setState(() => isLoading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -95,12 +118,23 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: () async {
-                await DatabaseHelper.setUserPreferences(widget.userId);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomePage(events: [])),
-                );
+                try {
+                  await DatabaseHelper.updateUserEventPreferences(widget.userId, selectedEvents.toList());
+                  await DatabaseHelper.setUserPreferences(widget.userId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Preferencje zapisane')),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage(events: [])),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd zapisu preferencji: $e')),
+                  );
+                }
               },
+
               child: const Text('Zapisz i kontynuuj'),
             ),
           ),
