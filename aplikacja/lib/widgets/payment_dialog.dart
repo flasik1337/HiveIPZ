@@ -1,5 +1,7 @@
+import 'package:Hive/styles/hive_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 
 class PaymentDialog extends StatefulWidget {
   const PaymentDialog({super.key});
@@ -12,6 +14,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   final _cardNumberController = TextEditingController();
   final _expiryDateController = TextEditingController();
   final _cvvController = TextEditingController();
+  String? _cardNumberError;
 
   @override
   void initState() {
@@ -28,24 +31,53 @@ class _PaymentDialogState extends State<PaymentDialog> {
     });
   }
 
+  bool _validateCardNumber() {
+    final cardNumber = _cardNumberController.text;
+    if (cardNumber.length != 16) {
+      setState(() {
+        _cardNumberError = 'Niepoprawny numer karty';
+      });
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Wprowadź dane płatności'),
+      backgroundColor: HiveColors.main,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _cardNumberController,
-            decoration: const InputDecoration(labelText: 'Numer karty'),
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(16),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Numer karty',
+              errorText: _cardNumberError,
+            ),
           ),
           TextField(
             controller: _expiryDateController,
             decoration: const InputDecoration(labelText: 'Data ważności (MM/RR)'),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^[0-9/]+$')),
+              LengthLimitingTextInputFormatter(5),
+            ],
           ),
           TextField(
             controller: _cvvController,
             decoration: const InputDecoration(labelText: 'CVV'),
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(3),
+            ],
           ),
         ],
       ),
@@ -56,6 +88,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
         ),
         TextButton(
           onPressed: () async {
+            if (!_validateCardNumber()) return;
+
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('cardNumber', _cardNumberController.text);
             await prefs.setString('expiryDate', _expiryDateController.text);
