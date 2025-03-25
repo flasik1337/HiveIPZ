@@ -77,6 +77,27 @@ class EventCard extends StatelessWidget {
               ],
             ),
           ),
+          if (event.isPromoted)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.amber,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Wydarzenie promowane',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+
         ],
       ),
     );

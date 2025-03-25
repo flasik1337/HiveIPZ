@@ -50,6 +50,11 @@ class _HomePageState extends State<HomePage> {
       final eventsData = await DatabaseHelper.getAllEvents();
       setState(() {
         events = eventsData.map((data) => Event.fromJson(data)).toList();
+        events.sort((a, b) {
+        if (a.isPromoted && !b.isPromoted) return -1;
+        if (!a.isPromoted && b.isPromoted) return 1;
+        return 0;
+  });
       });
     } catch (e) {
       print('Błąd podczas pobierania danych wydarzeń: $e');
