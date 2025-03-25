@@ -406,7 +406,7 @@ def update_event(event_id):
         cursor = mydb.cursor()
         sql = """
         UPDATE events
-        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s
+        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s, is_promoted = %s
         WHERE id = %s
         """
         val = (
@@ -418,6 +418,7 @@ def update_event(event_id):
             data['max_participants'],
             data['registered_participants'],
             data['image'],
+            data['is_promoted'],
             event_id
         )
         cursor.execute(sql, val)
@@ -757,4 +758,4 @@ if __name__ == '__main__':
     app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
                      '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
 
-    #app.run(host='0.0.0.0', port=5000, debug=True)
+    # app.run(host='0.0.0.0', port=5000, debug=True)
