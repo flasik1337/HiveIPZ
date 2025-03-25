@@ -199,6 +199,7 @@ class _EditEventPageState extends State<EditEventPage> {
       imagePath: widget.event.imagePath,
       // TODO: nazwa organizatora
       cena: cena,
+      isPromoted: widget.event.isPromoted,
       
       
     );

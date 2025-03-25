@@ -17,6 +17,30 @@ class EventPage extends StatefulWidget {
   _EventPageState createState() => _EventPageState();
 }
 
+Widget _buildActionButton(String text, VoidCallback onPressed) {
+  return SizedBox(
+    width: double.infinity,
+    child: TextButton(
+      style: TextButton.styleFrom(
+        backgroundColor: Color(0xFFFFC300),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color.fromARGB(255, 0, 0, 0),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  );
+}
+
 class _EventPageState extends State<EventPage> {
   late Event currentEvent; // aktualne wydarzenie
   bool isUserJoined = false; // Czy użytkownik jest zapisany na wydarzenie
@@ -238,24 +262,61 @@ class _EventPageState extends State<EventPage> {
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditEventPage(
-                        event: currentEvent,
-                        onSave: (updatedEvent) {
-                          setState(() {
-                            currentEvent = updatedEvent;
-                          });
-                        },
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildActionButton('Edytuj wydarzenie', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditEventPage(
+                          event: currentEvent,
+                          onSave: (updatedEvent) {
+                            setState(() {
+                              currentEvent = updatedEvent;
+                            });
+                          },
+                        ),
                       ),
-                    ),
-                  );
-                },
-                child: const Text('Edytuj wydarzenie'),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+                  _buildActionButton(
+                      currentEvent.isPromoted ? 'Usuń promocję' : 'Promuj wydarzenie',
+                      () async {
+                    try {
+                      final updated = currentEvent.copyWith(isPromoted: !currentEvent.isPromoted);
+                      await DatabaseHelper.updateEvent(
+                        currentEvent.id,
+                        {
+                          'name': currentEvent.name,
+                          'location': currentEvent.location,
+                          'description': currentEvent.description,
+                          'type': currentEvent.type,
+                          'start_date': currentEvent.startDate.toIso8601String(),
+                          'max_participants': currentEvent.maxParticipants,
+                          'registered_participants': currentEvent.registeredParticipants,
+                          'image': currentEvent.imagePath,
+                          'cena': currentEvent.cena,
+                          'is_promoted': updated.isPromoted,
+                        },
+                      );
+                      setState(() {
+                        currentEvent = updated;
+                      });
+                      widget.onUpdate(updated);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Błąd: $e')),
+                      );
+                    }
+                  }),
+                  const SizedBox(height: 12),
+                  _buildActionButton('Zobacz uczestników', () {
+                    _showParticipantsModal(context);
+                  }),
+                ],
               ),
             ),
           // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
@@ -269,13 +330,7 @@ class _EventPageState extends State<EventPage> {
                 child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
               ),
             ),
-             Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              onPressed: () => _showParticipantsModal(context),
-              child: const Text('Zobacz uczestników'),
-            ),
-          ),
+             
         ],
       ),
     );

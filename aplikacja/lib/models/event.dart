@@ -15,6 +15,8 @@ class Event {
   final String imagePath;
   final int? userId;
   final double cena;
+  final bool isPromoted;
+
 
   const Event({
     required this.id,
@@ -28,6 +30,7 @@ class Event {
     required this.imagePath,
     this.userId,
     required this.cena,
+    required this.isPromoted,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -45,6 +48,8 @@ class Event {
       cena: json['cena'] != null
           ? double.tryParse(json['cena'].toString()) ?? 0.0
           : 0.0,
+      isPromoted: json['is_promoted'] == 1,
+
     );
   }
 
@@ -60,6 +65,7 @@ class Event {
     String? imagePath,
     int? userId,
     double? cena,
+    bool? isPromoted,
   }) {
     return Event(
       id: id ?? this.id,
@@ -74,6 +80,8 @@ class Event {
       imagePath: imagePath ?? this.imagePath,
       userId: userId ?? this.userId,
       cena: cena ?? this.cena,
+      isPromoted: isPromoted ?? this.isPromoted,
+      
     );
   }
 
