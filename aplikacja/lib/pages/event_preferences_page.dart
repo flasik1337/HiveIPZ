@@ -15,15 +15,28 @@ class EventPreferencesPage extends StatefulWidget {
 
 class _EventPreferencesPageState extends State<EventPreferencesPage> {
   final List<Map<String, dynamic>> eventTypes = [
-    {'type': 'Domówka', 'icon': Icons.home},
-    {'type': 'Koncert', 'icon': Icons.music_note},
-    {'type': 'Wydarzenie plenerowe', 'icon': Icons.park},
-    {'type': 'Klub', 'icon': Icons.nightlife},
-    {'type': 'Sportowe', 'icon': Icons.sports_soccer},
-    {'type': 'Kulturalne', 'icon': Icons.theater_comedy},
+  {'type': 'Domówka', 'icon': Icons.weekend},
+  {'type': 'Warsztaty', 'icon': Icons.precision_manufacturing},
+  {'type': 'Impreza masowa', 'icon': Icons.groups},
+  {'type': 'Sportowe', 'icon': Icons.fitness_center},
+  {'type': 'Kulturalne', 'icon': Icons.theater_comedy},
+  {'type': 'Spotkanie towarzyskie', 'icon': Icons.sports_bar},
+  {'type': 'Outdoor', 'icon': Icons.hiking},
+  {'type': 'Relaks', 'icon': Icons.self_improvement},
+  {'type': 'Firmowe', 'icon': Icons.apartment},
+  {'type': 'Motoryzacyjne', 'icon': Icons.directions_car},
   ];
 
   final Set<String> selectedEvents = {};
+  bool isLoading = true;
+
+  @override
+void initState() {
+  super.initState();
+  _loadUserPreferences();
+}
+
+  
 
   void _toggleSelection(String eventType) {
     setState(() {
@@ -34,6 +47,20 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
       }
     });
   }
+
+  Future<void> _loadUserPreferences() async {
+  try {
+    final prefs = await DatabaseHelper.getUserEventPreferences(widget.userId);
+    setState(() {
+      selectedEvents.addAll(prefs);
+      isLoading = false;
+    });
+  } catch (e) {
+    print("Błąd podczas ładowania preferencji: $e");
+    setState(() => isLoading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -95,12 +122,23 @@ class _EventPreferencesPageState extends State<EventPreferencesPage> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: () async {
-                await DatabaseHelper.setUserPreferences(widget.userId);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomePage(events: [])),
-                );
+                try {
+                  await DatabaseHelper.updateUserEventPreferences(widget.userId, selectedEvents.toList());
+                  await DatabaseHelper.setUserPreferences(widget.userId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Preferencje zapisane')),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage(events: [])),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd zapisu preferencji: $e')),
+                  );
+                }
               },
+
               child: const Text('Zapisz i kontynuuj'),
             ),
           ),
