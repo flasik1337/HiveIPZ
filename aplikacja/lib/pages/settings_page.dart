@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../pages/password_change_page.dart';
+import '../pages/event_preferences_page.dart';
+
 
 /// Strona ustawień użytkownika
 class SettingsPage extends StatefulWidget {
@@ -105,6 +107,11 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
   }
+  Future<String?> getUserIdFromPrefs() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('userId');
+}
+
 
   Future<bool> _showLogoutConfirmationDialog(BuildContext context) async {
     return await showDialog<bool>(
@@ -257,6 +264,26 @@ class _SettingsPageState extends State<SettingsPage> {
               // Obsługa kliknięcia w ustawienia profilu
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.event),
+            title: const Text('Preferencje wydarzeń'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () async {
+              String? userId = await getUserIdFromPrefs();
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => EventPreferencesPage(userId: userId)),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Błąd pobierania danych użytkownika')),
+                );
+              }
+            },
+
+          ),
+
           Divider(),
           ListTile(
             title: Row(
@@ -549,6 +576,7 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
           ],
         ),
       ),
+      
     );
   }
 }

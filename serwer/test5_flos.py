@@ -72,7 +72,7 @@ def register():
         imie = data['name']
         nazwisko = data['surname']
         wiek = data['age']
-        nickname = data['nickName']
+        nickname = data['nickname']
         email = data['email']
         password = data['password']
 
@@ -84,7 +84,7 @@ def register():
         verification_token = secrets.token_urlsafe(32)
 
         sql = """
-        INSERT INTO users (nickName, imie, nazwisko, wiek, email, password, is_verified, verification_token)
+        INSERT INTO users (nickname, imie, nazwisko, wiek, email, password, is_verified, verification_token)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         val = (nickname, imie, nazwisko, wiek, email, password, 0, verification_token)
@@ -195,15 +195,15 @@ def login():
         if existing_record:
             # Jeżeli taki rekord instieje, aktualizuuemy go
             update_info_sql = """
-                        UPDATE users_info
-                        SET last_login = %s, token_expires_at = %s
+                        UPDATE users_info 
+                        SET last_login = %s, token_expires_at = %s 
                         WHERE userID = %s
                     """
             cursor.execute(update_info_sql, (current_time, expires_at, user_id))
         else:
             # Jeżeli go nie ma ^ tworzymy
             insert_info_sql = """
-                        INSERT INTO users_info (userID, last_login, token_expires_at)
+                        INSERT INTO users_info (userID, last_login, token_expires_at) 
                         VALUES (%s, %s, %s)
                     """
             cursor.execute(insert_info_sql, (user_id, current_time, expires_at))
@@ -272,6 +272,22 @@ def verify_token():
     except Exception as e:
         print(f"Ogólny błąd: {e}")
         return jsonify({'error': 'Błąd serwera', 'details': str(e)}), 500
+
+# Filipa syfn a pobieranie hasła
+@app.route('/get_password/<user_id>', methods=['GET'])
+def get_password(user_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT password FROM users WHERE id = %s"
+        cursor.execute(sql, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Nie znaleziono użytkownika o podanym ID'}), 404
+
+        return jsonify({'password': user['password']}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # Częśc patrykowa do konta użytkownika
@@ -406,7 +422,7 @@ def update_event(event_id):
         cursor = mydb.cursor()
         sql = """
         UPDATE events
-        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s, is_promoted = %s
+        SET name = %s, location = %s, description = %s, type = %s, start_date = %s, max_participants = %s, registered_participants = %s, image = %s
         WHERE id = %s
         """
         val = (
@@ -418,7 +434,6 @@ def update_event(event_id):
             data['max_participants'],
             data['registered_participants'],
             data['image'],
-            data['is_promoted'],
             event_id
         )
         cursor.execute(sql, val)
@@ -467,7 +482,7 @@ def join_event(event_id):
         # Zapis użytkownika na wydarzenie
         sql_insert = "INSERT INTO event_participants (event_id, user_id) VALUES (%s, %s)"
         cursor.execute(sql_insert, (event_id, user_id))
-
+        
         # Aktualizacja liczby uczestników
         sql_update_participants = """
         UPDATE events
@@ -475,7 +490,7 @@ def join_event(event_id):
         WHERE id = %s
         """
         cursor.execute(sql_update_participants, (event_id,))
-
+        
         mydb.commit()
 
         return jsonify({'message': 'Zapisano użytkownika na wydarzenie'}), 200
@@ -507,7 +522,7 @@ def leave_event(event_id):
         # Usuwanie użytkownika z wydarzenia
         sql_delete = "DELETE FROM event_participants WHERE event_id = %s AND user_id = %s"
         cursor.execute(sql_delete, (event_id, user_id))
-
+        
         # Aktualizacja liczby uczestników
         sql_update_participants = """
         UPDATE events
@@ -515,7 +530,7 @@ def leave_event(event_id):
         WHERE id = %s
         """
         cursor.execute(sql_update_participants, (event_id,))
-
+        
         mydb.commit()
 
         return jsonify({'message': 'Użytkownik został wypisany z wydarzenia'}), 200
@@ -553,7 +568,7 @@ def check_user_joined(event_id):
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Czy jest moderatorem danego wydarzenia
+# Czy jest moderatorem danego wydarzenia 
 @app.route('/events/<event_id>/is_admin', methods=['GET'])
 def is_admin(event_id):
     try:
@@ -588,6 +603,40 @@ def is_admin(event_id):
     except Exception as e:
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user_events', methods=['GET'])
+def get_user_events():
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+
+        token = token.split(" ")[1]
+        cursor = mydb.cursor(dictionary=True)
+
+        # Pobieranie user_id z tokenu
+        sql = "SELECT id FROM users WHERE token = %s"
+        cursor.execute(sql, (token,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+
+        # Pobieranie wydarzeń powiązanych z user_id
+        sql_events = "SELECT * FROM events WHERE user_id = %s"
+        cursor.execute(sql_events, (user_id,))
+        events = cursor.fetchall()
+
+        for event in events:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify(events), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/delete_account', methods=['DELETE'])
@@ -686,76 +735,7 @@ def verify_password():
 def mainPage():
    return "Ahoj"
 
-@app.route('/events/<event_id>/participants', methods=['GET'])
-def get_event_participants(event_id):
-    try:
-        cursor = mydb.cursor(dictionary=True)
-        sql = """
-        SELECT users.nickName FROM event_participants
-        JOIN users ON event_participants.user_id = users.id
-        WHERE event_participants.event_id = %s
-        """
-        cursor.execute(sql, (event_id,))
-        participants = cursor.fetchall()
-
-        return jsonify(participants), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
-@app.route('/get_user_preferences', methods=['GET'])
-def get_user_preferences():
-    user_id = request.args.get('user_id')
-
-    cursor = mydb.cursor(dictionary=True)
-    cursor.execute("SELECT has_set_preferences FROM users WHERE id = %s", (user_id,))
-    result = cursor.fetchone()
-
-    if result is None:
-        return jsonify({'error': 'Użytkownik nie istnieje'}), 404
-
-    return jsonify({'hasSetPreferences': result['has_set_preferences']}), 200
-
-
-@app.route('/set_user_preferences', methods=['POST'])
-def set_user_preferences():
-    data = request.get_json()
-    user_id = data.get('user_id')
-
-    cursor = mydb.cursor()
-    cursor.execute("UPDATE users SET has_set_preferences = TRUE WHERE id = %s", (user_id,))
-    mydb.commit()
-
-    return jsonify({'message': 'Preferencje zapisane'}), 200
-
-@app.route('/user_event_preferences', methods=['GET'])
-def get_user_event_preferences():
-    user_id = request.args.get('user_id')
-    cursor = mydb.cursor(dictionary=True)
-    cursor.execute("SELECT event_type FROM user_event_preferences WHERE user_id = %s", (user_id,))
-    preferences = [row['event_type'] for row in cursor.fetchall()]
-    return jsonify({'preferences': preferences}), 200
-
-@app.route('/user_event_preferences', methods=['POST'])
-def set_user_event_preferences():
-    data = request.get_json()
-    user_id = data['user_id']
-    selected_types = data['event_types']
-
-    cursor = mydb.cursor()
-
-    cursor.execute("DELETE FROM user_event_preferences WHERE user_id = %s", (user_id,))
-    
-    for event_type in selected_types:
-        cursor.execute("INSERT INTO user_event_preferences (user_id, event_type) VALUES (%s, %s)", (user_id, event_type))
-
-    mydb.commit()
-    return jsonify({'message': 'Preferencje zaktualizowane'}), 200
-
-    
-
 if __name__ == '__main__':
     ip = get_local_ip()
     app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
                      '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
-
-    # app.run(host='0.0.0.0', port=5000, debug=True)

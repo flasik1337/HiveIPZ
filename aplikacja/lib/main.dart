@@ -7,7 +7,9 @@ import 'pages/registration.dart';
 import 'pages/profile_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/password_reset_page.dart';
+import 'pages/event_preferences_page.dart';
 import 'models/event.dart';
+
 
 // Inicjalizacja listy eventów, na której działa cała aplikacja
 List<Event> initialEvents = [];
@@ -61,6 +63,20 @@ class MyApp extends StatelessWidget {
         '/account': (context) => ProfilePage(),
         '/settings': (context) => SettingsPage(),
         '/change_password': (context) => PasswordResetPage(),
+        '/event_preferences': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+        final userId = args?['userId'] as String?;
+
+        if (userId != null) {
+          return EventPreferencesPage(userId: userId);
+        } else {
+          return const Scaffold(
+            body: Center(child: Text('Błąd: Brak ID użytkownika')),
+          );
+        }
+      },
+
+
       },
     );
   }
