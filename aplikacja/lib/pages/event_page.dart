@@ -140,9 +140,11 @@ class _EventPageState extends State<EventPage> {
 
         // Obsługa płatności dla wydarzeń płatnych
         if (currentEvent.cena > 0) {
-          final paymentConfirmed = await showDialog<bool>(
+          final paymentConfirmed = await showModalBottomSheet<bool>(
             context: context,
-            builder: (context) => const PaymentDialog(),
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const PaymentBottomSheet(),
           );
 
           if (paymentConfirmed != true) return;
