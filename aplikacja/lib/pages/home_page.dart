@@ -7,6 +7,7 @@ import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/points_page.dart';
 import '../services/event_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -51,10 +52,10 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         events = eventsData.map((data) => Event.fromJson(data)).toList();
         events.sort((a, b) {
-        if (a.isPromoted && !b.isPromoted) return -1;
-        if (!a.isPromoted && b.isPromoted) return 1;
-        return 0;
-  });
+          if (a.isPromoted && !b.isPromoted) return -1;
+          if (!a.isPromoted && b.isPromoted) return 1;
+          return 0;
+        });
       });
     } catch (e) {
       print('Błąd podczas pobierania danych wydarzeń: $e');
@@ -96,7 +97,8 @@ class _HomePageState extends State<HomePage> {
   void _toggleSearch() {
     setState(() {
       isSearching = !isSearching;
-      searchBarWidth = isSearching ? MediaQuery.of(context).size.width - 32 : 56;
+      searchBarWidth =
+          isSearching ? MediaQuery.of(context).size.width - 32 : 56;
       if (isSearching) {
         Future.delayed(Duration(milliseconds: 300), () {
           _searchFocusNode.requestFocus();
@@ -294,7 +296,13 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 1:
-          // Hive (nic nie robi)
+          // Punkty
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PointsPage(),
+            ),
+          );
           break;
         case 2:
           // Dodawanie wydarzenia
@@ -368,32 +376,33 @@ class _HomePageState extends State<HomePage> {
               ),
               child: isSearching
                   ? Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      decoration: InputDecoration(
-                        hintText: "Szukaj...",
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      onSubmitted: (query) {
-                        _onSearch(query);
-                        _toggleSearch();
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: Colors.black),
-                    onPressed: _toggleSearch,
-                  ),
-                ],
-              )
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            decoration: InputDecoration(
+                              hintText: "Szukaj...",
+                              border: InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            onSubmitted: (query) {
+                              _onSearch(query);
+                              _toggleSearch();
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.black),
+                          onPressed: _toggleSearch,
+                        ),
+                      ],
+                    )
                   : IconButton(
-                icon: Icon(Icons.search, color: Colors.black),
-                onPressed: _toggleSearch,
-              ),
+                      icon: Icon(Icons.search, color: Colors.black),
+                      onPressed: _toggleSearch,
+                    ),
             ),
           ),
         ],
