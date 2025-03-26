@@ -17,7 +17,6 @@ class Event {
   final double cena;
   final bool isPromoted;
 
-
   const Event({
     required this.id,
     required this.name,
@@ -49,7 +48,6 @@ class Event {
           ? double.tryParse(json['cena'].toString()) ?? 0.0
           : 0.0,
       isPromoted: json['is_promoted'] == 1,
-
     );
   }
 
@@ -81,7 +79,6 @@ class Event {
       userId: userId ?? this.userId,
       cena: cena ?? this.cena,
       isPromoted: isPromoted ?? this.isPromoted,
-      
     );
   }
 
@@ -100,7 +97,8 @@ class Event {
       'listopada',
       'grudnia'
     ];
-    String result = '${startDate.day} ${months[startDate.month - 1]} ${startDate.year}';
+    String result =
+        '${startDate.day} ${months[startDate.month - 1]} ${startDate.year}';
 
     return (result);
   }
@@ -130,5 +128,4 @@ class Event {
       },
     );
   }
-
 }

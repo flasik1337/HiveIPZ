@@ -7,6 +7,7 @@ import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/points_page.dart';
 import '../services/event_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -306,7 +307,13 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 1:
-          // Hive (nic nie robi)
+          // Punkty
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PointsPage(),
+            ),
+          );
           break;
         case 2:
           // Dodawanie wydarzenia
