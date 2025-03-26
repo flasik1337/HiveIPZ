@@ -6,16 +6,14 @@ class DatabaseHelper {
   // 'http://212.127.78.92:5000';
   static const String link = 'https://vps.jakosinski.pl:5000';
 
-
-
   static Future<void> addUser(
-      String name,
-      String surname,
-      int age,
-      String nickName,
-      String email,
-      String password,
-      ) async {
+    String name,
+    String surname,
+    int age,
+    String nickName,
+    String email,
+    String password,
+  ) async {
     final url = Uri.parse('$link/register');
     final response = await http.post(
       url,
@@ -47,7 +45,7 @@ class DatabaseHelper {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nickName': nickName, 'password': password}),
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data; // Zwracamy CAŁY obiekt odpowiedzi
@@ -59,6 +57,7 @@ class DatabaseHelper {
       throw Exception('Błąd połączenia: $e');
     }
   }
+
   // Update User by Patryk
   static Future<void> updateUser(
       String userId, Map<String, String> updatedFields) async {
@@ -87,8 +86,7 @@ class DatabaseHelper {
     // FIXME: zmieniłem to, żeby było ładniejsze, ale niech ktoś kto to bardziej ogarnia te kody sprawdzi czy to śmiga
     if (response.statusCode != 200) {
       // Token jest nieważny
-      throw Exception(
-          'Token jest nieważny');
+      throw Exception('Token jest nieważny');
     }
   }
 
@@ -112,7 +110,8 @@ class DatabaseHelper {
   }
 
   // Zmiana hasła po starym haśle
-  static Future<void> changePasswordWithOld(String oldPassword, String newPassword) async {
+  static Future<void> changePasswordWithOld(
+      String oldPassword, String newPassword) async {
     final url = Uri.parse('$link/change_password_with_old');
     final response = await http.post(
       url,
@@ -141,9 +140,9 @@ class DatabaseHelper {
     }
   }
 
-
   // Aktualizowanie wydarzeń
-  static Future<void> updateEvent(String id, Map<String, dynamic> eventData) async {
+  static Future<void> updateEvent(
+      String id, Map<String, dynamic> eventData) async {
     final url = Uri.parse('$link/events/$id');
     final response = await http.put(
       url,
@@ -206,8 +205,6 @@ class DatabaseHelper {
     }
   }
 
-
-
   static Future<void> deleteAccount(String token) async {
     final url = Uri.parse('$link/delete_account');
     final response = await http.delete(
@@ -243,7 +240,8 @@ class DatabaseHelper {
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token'); // Zakładam, że token jest przechowywany pod kluczem 'token'
+    return prefs.getString(
+        'token'); // Zakładam, że token jest przechowywany pod kluczem 'token'
   }
 
   static Future<void> joinEvent(String eventId) async {
@@ -329,11 +327,13 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['is_joined'] as bool; // Oczekujemy odpowiedzi serwera z kluczem 'is_joined'
+      return data['is_joined']
+          as bool; // Oczekujemy odpowiedzi serwera z kluczem 'is_joined'
     } else {
       throw Exception('Błąd przy sprawdzaniu statusu użytkownika.');
     }
   }
+
   // Sprawdzamy czy user jest adminem wydarzenia
   static Future<bool> isAdmin(String eventId) async {
     final token = await _getToken();
@@ -349,7 +349,8 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['is_admin'] as bool; // Oczekujemy odpowiedzi serwera z kluczem 'is_admin'
+      return data['is_admin']
+          as bool; // Oczekujemy odpowiedzi serwera z kluczem 'is_admin'
     } else {
       throw Exception('Błąd przy sprawdzaniu uprawnień administratora.');
     }
@@ -400,36 +401,36 @@ class DatabaseHelper {
   }
 
   static Future<List<String>> getEventParticipants(String eventId) async {
-  final url = Uri.parse('$link/events/$eventId/participants');
-  final response = await http.get(url);
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body) as List<dynamic>;
-    return data.map((e) => e['nickName'] as String).toList();
-  } else {
-    throw Exception('Nie udało się pobrać listy uczestników');
-  }
+    final url = Uri.parse('$link/events/$eventId/participants');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.map((e) => e['nickName'] as String).toList();
+    } else {
+      throw Exception('Nie udało się pobrać listy uczestników');
+    }
   }
 
   static Future<bool> getUserPreferences(String userId) async {
-  try {
-    final response = await http.get(
-      Uri.parse('$link/get_user_preferences?user_id=$userId'),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$link/get_user_preferences?user_id=$userId'),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final hasSetPreferences = (data['hasSetPreferences'] == 1);
-      return hasSetPreferences;
-    } else {
-      throw Exception("Błąd API: ${response.statusCode} - ${response.body}");
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final hasSetPreferences = (data['hasSetPreferences'] == 1);
+        return hasSetPreferences;
+      } else {
+        throw Exception("Błąd API: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("Błąd pobierania preferencji użytkownika: $e");
+      return false;
     }
-  } catch (e) {
-    print("Błąd pobierania preferencji użytkownika: $e");
-    return false;
   }
-}
 
-    static Future<void> setUserPreferences(String userId) async {
+  static Future<void> setUserPreferences(String userId) async {
     final response = await http.post(
       Uri.parse('$link/set_user_preferences'),
       headers: {'Content-Type': 'application/json'},
@@ -441,29 +442,39 @@ class DatabaseHelper {
     }
   }
 
-static Future<List<String>> getUserEventPreferences(String userId) async {
-  final response = await http.get(Uri.parse('$link/user_event_preferences?user_id=$userId'));
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    return List<String>.from(data['preferences']);
-  } else {
-    throw Exception('Błąd pobierania preferencji użytkownika');
+  static Future<List<String>> getUserEventPreferences(String userId) async {
+    final response = await http
+        .get(Uri.parse('$link/user_event_preferences?user_id=$userId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<String>.from(data['preferences']);
+    } else {
+      throw Exception('Błąd pobierania preferencji użytkownika');
+    }
   }
-}
 
-static Future<void> updateUserEventPreferences(String userId, List<String> selectedTypes) async {
-  final response = await http.post(
-    Uri.parse('$link/user_event_preferences'),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({
-      'user_id': userId,
-      'event_types': selectedTypes,
-    }),
-  );
-  if (response.statusCode != 200) {
-    throw Exception('Nie udało się zaktualizować preferencji');
+  // Pobieranie wydarzeń dla użytkownika
+  static Future<List<Map<String, dynamic>>> getUserEvents(int userId) async {
+    var url = Uri.parse('$link/events/$userId');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      } catch (e) {
+        print('Błąd parsowania odpowiedzi JSON: $e');
+        throw Exception('Błąd parsowania danych wydarzeń');
+      }
+    } else {
+      try {
+        final error = jsonDecode(response.body)['error'];
+        throw Exception('Błąd serwera: $error');
+      } catch (e) {
+        throw Exception('Błąd serwera: nieoczekiwany format odpowiedzi');
+      }
+    }
   }
-}
 
   static Future<void> banUser(String eventId, String nickName) async {
     final token = await _getToken();
@@ -490,9 +501,18 @@ static Future<void> updateUserEventPreferences(String userId, List<String> selec
   }
 
 
-
-
+  static Future<void> updateUserEventPreferences(
+      String userId, List<String> selectedTypes) async {
+    final response = await http.post(
+      Uri.parse('$link/user_event_preferences'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'event_types': selectedTypes,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Nie udało się zaktualizować preferencji');
+    }
+  }
 }
-
-
-

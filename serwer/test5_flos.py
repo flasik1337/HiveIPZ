@@ -736,6 +736,7 @@ def mainPage():
    return "Ahoj"
 
 if __name__ == '__main__':
-    ip = get_local_ip()
-    app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
-                     '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
+    # ip = get_local_ip()
+    # app.run(host=f'192.168.56.1', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
+    #                  '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -289,7 +289,7 @@ def get_user_by_token():
         cursor = mydb.cursor(dictionary=True)
 
         # Wykonanie zapytania SQL
-        query = "SELECT id, email, nickName, imie, nazwisko, is_verified FROM users WHERE token = %s"
+        query = "SELECT id, email, nickName, imie, nazwisko, is_verified, points FROM users WHERE token = %s"
         cursor.execute(query, (token,))
         user = cursor.fetchone()
 
@@ -751,7 +751,22 @@ def set_user_event_preferences():
     mydb.commit()
     return jsonify({'message': 'Preferencje zaktualizowane'}), 200
 
-    
+@app.route('/events/<int:user_id>', methods=['GET'])
+def get_users_events(user_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT * FROM events WHERE user_id = %s"
+        cursor.execute(sql, (user_id,))
+        events = cursor.fetchall()
+
+        # Konwersja datetime na string
+        for event in events:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify(events), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     ip = get_local_ip()

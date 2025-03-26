@@ -5,6 +5,9 @@ import '../pages/edit_event_page.dart';
 import '../database/database_helper.dart';
 import '../styles/text_styles.dart';
 import '../widgets/payment_dialog.dart';
+import 'package:add_2_calendar/add_2_calendar.dart' as calendar;
+
+
 
 /// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
@@ -55,6 +58,20 @@ class _EventPageState extends State<EventPage> {
     _initializeUser(); // Inicjalizacja użytkownika
   }
 
+  void _addToGoogleCalendar() {
+  final calendarEvent = calendar.Event(
+    title: currentEvent.name,
+    description: currentEvent.description,
+    location: currentEvent.location,
+    startDate: currentEvent.startDate,
+    endDate: currentEvent.startDate.add(const Duration(hours: 2)),
+    allDay: false,
+    iosParams: const calendar.IOSParams(reminder: Duration(minutes: 30)),
+    androidParams: const calendar.AndroidParams(emailInvites: []),
+  );
+
+  calendar.Add2Calendar.addEvent2Cal(calendarEvent);
+}
 
 
   Future<void> _initializeUser() async {
@@ -143,6 +160,8 @@ class _EventPageState extends State<EventPage> {
       });
     }
   }
+
+  
 
   Future<void> _checkUserJoinedStatus() async {
     if (userId != null) {
@@ -276,6 +295,15 @@ class _EventPageState extends State<EventPage> {
               style: HiveTextStyles.regular,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.calendar_today),
+              label: const Text('Dodaj do Google Kalendarza'),
+              onPressed: _addToGoogleCalendar,
+            ),
+          ),
+
 
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
