@@ -66,8 +66,8 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      recentSearches = prefs.getStringList('recentSearches') ??
-          ['pudzian', 'kremówki', 'mariusz'];
+      recentSearches =
+          prefs.getStringList('recentSearches') ?? ['zut', 'pudzian', 'rabbit'];
     });
   }
 
@@ -110,8 +110,19 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _onSearch(String query) {
+  void _onSearch(String query) async {
     EventFilterService.filterEventsByQuery(context, events, query);
+
+    // Dodaj do recentSearches jeśli nie ma
+    if (!recentSearches.contains(query)) {
+      setState(() {
+        recentSearches.insert(0, query);
+        if (recentSearches.length > 5) recentSearches.removeLast();
+      });
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setStringList('recentSearches', recentSearches);
+    }
+
     setState(() {
       isSearching = false;
     });
@@ -378,21 +389,72 @@ class _HomePageState extends State<HomePage> {
                   ? Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            decoration: InputDecoration(
-                              hintText: "Szukaj...",
-                              border: InputBorder.none,
-                              contentPadding:
-                                  EdgeInsets.symmetric(horizontal: 16),
-                            ),
-                            onSubmitted: (query) {
-                              _onSearch(query);
-                              _toggleSearch();
-                            },
-                          ),
-                        ),
+                            child: RawAutocomplete<String>(
+                          textEditingController: _searchController,
+                          focusNode: FocusNode(),
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                                alignment: Alignment.topLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.9,
+                                    ),
+                                    child: Material(
+                                      color: Colors.white,
+                                      elevation: 4.0,
+                                      borderRadius: BorderRadius.circular(30),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final option =
+                                              options.elementAt(index);
+                                          return ListTile(
+                                            title: Text(option),
+                                            leading: Icon(Icons.history),
+                                            onTap: () => onSelected(option),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ));
+                          },
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return const Iterable<String>.empty();
+                            }
+                            return recentSearches.where((search) => search
+                                .toLowerCase()
+                                .contains(textEditingValue.text.toLowerCase()));
+                          },
+                          onSelected: (String selection) {
+                            _searchController.text = selection;
+                            _onSearch(selection);
+                          },
+                          fieldViewBuilder: (context, controller, focusNode,
+                              onFieldSubmitted) {
+                            return TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                hintText: "Szukaj...",
+                                border: InputBorder.none,
+                                contentPadding:
+                                    EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              onSubmitted: (query) {
+                                _onSearch(query);
+                                _toggleSearch();
+                              },
+                            );
+                          },
+                        )),
                         IconButton(
                           icon: Icon(Icons.close, color: Colors.black),
                           onPressed: _toggleSearch,
@@ -406,8 +468,9 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
+
       ),
-      bottomNavigationBar: BottomAppBar(
+      bottomNavigationBar: !isSearching ? BottomAppBar(
         height: 80,
         color: Colors.white,
         child: Row(
@@ -442,7 +505,8 @@ class _HomePageState extends State<HomePage> {
             )
           ],
         ),
-      ),
+      ) : null,
+
     );
   }
 }
