@@ -465,6 +465,33 @@ static Future<void> updateUserEventPreferences(String userId, List<String> selec
   }
 }
 
+  static Future<void> banUser(String eventId, String nickName) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/ban');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'nickName': nickName}),  // <-- Wysyłamy nick zamiast user_id
+    );
+
+    if (response.statusCode == 200) {
+      print('Użytkownik zbanowany');
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd przy banowaniu użytkownika: $error');
+    }
+  }
+
+
+
+
 }
 
 

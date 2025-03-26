@@ -82,7 +82,7 @@ class _EventPageState extends State<EventPage> {
 
   void _showParticipantsModal(BuildContext context) async {
     List<String> participants = await DatabaseHelper.getEventParticipants(currentEvent.id);
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -101,14 +101,32 @@ class _EventPageState extends State<EventPage> {
                 child: participants.isEmpty
                     ? const Center(child: Text('Brak uczestników'))
                     : ListView.builder(
-                        itemCount: participants.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            leading: const Icon(Icons.person),
-                            title: Text(participants[index]),
-                          );
+                  itemCount: participants.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      leading: const Icon(Icons.person),
+                      title: Text(participants[index]),
+                      trailing: isUserOwner
+                          ? IconButton(
+                        icon: Icon(Icons.block, color: Colors.red),
+                        onPressed: () async {
+                          try {
+                            await DatabaseHelper.banUser(
+                                currentEvent.id, participants[index]);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Użytkownik zbanowany')),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Błąd: $e')),
+                            );
+                          }
                         },
-                      ),
+                      )
+                          : null,
+                    );
+                  },
+                ),
               ),
             ],
           ),
