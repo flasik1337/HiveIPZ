@@ -74,13 +74,14 @@ class _HomePageState extends State<HomePage> {
   void sortEventsByPrice(bool ascending) {
     setState(() {
       events.sort((a, b) =>
-          ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
+      ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
     });
   }
 
   void sortEventsByParticipants(bool ascending) {
     setState(() {
-      events.sort((a, b) => ascending
+      events.sort((a, b) =>
+      ascending
           ? a.registeredParticipants.compareTo(b.registeredParticipants)
           : b.registeredParticipants.compareTo(a.registeredParticipants));
     });
@@ -88,7 +89,8 @@ class _HomePageState extends State<HomePage> {
 
   void sortEventsByDate(bool ascending) {
     setState(() {
-      events.sort((a, b) => ascending
+      events.sort((a, b) =>
+      ascending
           ? a.startDate.compareTo(b.startDate)
           : b.startDate.compareTo(a.startDate));
     });
@@ -98,7 +100,10 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       isSearching = !isSearching;
       searchBarWidth =
-          isSearching ? MediaQuery.of(context).size.width - 32 : 56;
+      isSearching ? MediaQuery
+          .of(context)
+          .size
+          .width - 32 : 56;
       if (isSearching) {
         Future.delayed(Duration(milliseconds: 300), () {
           _searchFocusNode.requestFocus();
@@ -152,9 +157,9 @@ class _HomePageState extends State<HomePage> {
                         builder: (BuildContext context) {
                           return EventTypeGrid(
                               onEventTypeSelected: (String typeFilter) {
-                            EventFilterService.filterEventsByType(
-                                context, events, typeFilter);
-                          });
+                                EventFilterService.filterEventsByType(
+                                    context, events, typeFilter);
+                              });
                         });
                   }),
               ListTile(
@@ -220,8 +225,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 1
                         ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -243,8 +248,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 2
                         ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -266,8 +271,8 @@ class _HomePageState extends State<HomePage> {
                         : null,
                     trailing: selectedSortingType == 3
                         ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down)
                         : null,
                     onTap: () {
                       setModalState(() {
@@ -298,7 +303,7 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-          // Przejdź do strony głównej
+        // Przejdź do strony głównej
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -307,7 +312,7 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 1:
-          // Punkty
+        // Punkty
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -316,24 +321,25 @@ class _HomePageState extends State<HomePage> {
           );
           break;
         case 2:
-          // Dodawanie wydarzenia
+        // Dodawanie wydarzenia
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
-                setState(() {
-                  events.add(newEvent);
-                });
-              }),
+              builder: (context) =>
+                  CreateEventPage(onEventCreated: (newEvent) {
+                    setState(() {
+                      events.add(newEvent);
+                    });
+                  }),
             ),
           );
           break;
         case 3:
-          // Filtrowanie
+        // Filtrowanie
           showFilterModalBottomSheet();
           break;
         case 4:
-          // Profil użytkownika
+        // Profil użytkownika
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -354,23 +360,32 @@ class _HomePageState extends State<HomePage> {
           events.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
-                  onRefresh: _fetchAllEvents,
-                  child: PageView.builder(
-                    scrollDirection: Axis.vertical,
-                    itemCount: events.length,
-                    itemBuilder: (context, index) {
-                      final event = events[index];
-                      return EventCard(
-                        event: event,
-                        onUpdate: (updatedEvent) {
-                          setState(() {
-                            events[index] = updatedEvent;
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
+            onRefresh: _fetchAllEvents,
+            child: PageView.builder(
+              scrollDirection: Axis.vertical,
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return EventCard(
+                  event: event,
+                  onUpdate: (updatedEvent) {
+                    setState(() {
+                      events[index] = updatedEvent;
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+
+          // AnimatedOpacity(
+          //     opacity: isSearching ? 1.0 : 0.0,
+          //     duration: Duration(milliseconds: 250),
+          //     child: Container(color: Colors.black.withOpacity(0.6),
+          //     )
+          // ),
+
+          // TODO przycisk sortowania POD wyszukiwaniem
 
           Positioned(
             top: 50,
@@ -387,90 +402,95 @@ class _HomePageState extends State<HomePage> {
               ),
               child: isSearching
                   ? Row(
-                      children: [
-                        Expanded(
-                            child: RawAutocomplete<String>(
-                          textEditingController: _searchController,
-                          focusNode: FocusNode(),
-                          optionsViewBuilder: (context, onSelected, options) {
-                            return Align(
-                                alignment: Alignment.topLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context).size.width *
-                                              0.9,
-                                    ),
-                                    child: Material(
-                                      color: Colors.white,
-                                      elevation: 4.0,
-                                      borderRadius: BorderRadius.circular(30),
-                                      child: ListView.builder(
-                                        padding: EdgeInsets.zero,
-                                        shrinkWrap: true,
-                                        itemCount: options.length,
-                                        itemBuilder: (context, index) {
-                                          final option =
-                                              options.elementAt(index);
-                                          return ListTile(
-                                            title: Text(option),
-                                            leading: Icon(Icons.history),
-                                            onTap: () => onSelected(option),
-                                          );
-                                        },
-                                      ),
+                children: [
+                  Expanded(
+                      child: RawAutocomplete<String>(
+                        textEditingController: _searchController,
+                        focusNode: FocusNode(),
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                              alignment: Alignment.topLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                    MediaQuery
+                                        .of(context)
+                                        .size
+                                        .width *
+                                        0.9,
+                                  ),
+                                  child: Material(
+                                    color: Colors.white,
+                                    elevation: 4.0,
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      itemBuilder: (context, index) {
+                                        final option =
+                                        options.elementAt(index);
+                                        return ListTile(
+                                          title: Text(option),
+                                          leading: Icon(Icons.history),
+                                          onTap: () => onSelected(option),
+                                        );
+                                      },
                                     ),
                                   ),
-                                ));
-                          },
-                          optionsBuilder: (TextEditingValue textEditingValue) {
-                            if (textEditingValue.text.isEmpty) {
-                              return const Iterable<String>.empty();
-                            }
-                            return recentSearches.where((search) => search
-                                .toLowerCase()
-                                .contains(textEditingValue.text.toLowerCase()));
-                          },
-                          onSelected: (String selection) {
-                            _searchController.text = selection;
-                            _onSearch(selection);
-                          },
-                          fieldViewBuilder: (context, controller, focusNode,
-                              onFieldSubmitted) {
-                            return TextField(
-                              controller: controller,
-                              focusNode: focusNode,
-                              decoration: InputDecoration(
-                                hintText: "Szukaj...",
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(horizontal: 16),
-                              ),
-                              onSubmitted: (query) {
-                                _onSearch(query);
-                                _toggleSearch();
-                              },
-                            );
-                          },
-                        )),
-                        IconButton(
-                          icon: Icon(Icons.close, color: Colors.black),
-                          onPressed: _toggleSearch,
-                        ),
-                      ],
-                    )
+                                ),
+                              ));
+                        },
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          if (textEditingValue.text.isEmpty) {
+                            return const Iterable<String>.empty();
+                          }
+                          return recentSearches.where((search) =>
+                              search
+                                  .toLowerCase()
+                                  .contains(
+                                  textEditingValue.text.toLowerCase()));
+                        },
+                        onSelected: (String selection) {
+                          _searchController.text = selection;
+                          _onSearch(selection);
+                        },
+                        fieldViewBuilder: (context, controller, focusNode,
+                            onFieldSubmitted) {
+                          return TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            decoration: InputDecoration(
+                              hintText: "Szukaj...",
+                              border: InputBorder.none,
+                              contentPadding:
+                              EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            onSubmitted: (query) {
+                              _onSearch(query);
+                              _toggleSearch();
+                            },
+                          );
+                        },
+                      )),
+                  IconButton(
+                    icon: Icon(Icons.close, color: Colors.black),
+                    onPressed: _toggleSearch,
+                  ),
+                ],
+              )
                   : IconButton(
-                      icon: Icon(Icons.search, color: Colors.black),
-                      onPressed: _toggleSearch,
-                    ),
+                icon: Icon(Icons.search, color: Colors.black),
+                onPressed: _toggleSearch,
+              ),
             ),
           ),
         ],
 
       ),
-      bottomNavigationBar: !isSearching ? BottomAppBar(
+      bottomNavigationBar: BottomAppBar(
         height: 80,
         color: Colors.white,
         child: Row(
@@ -505,7 +525,7 @@ class _HomePageState extends State<HomePage> {
             )
           ],
         ),
-      ) : null,
+      ),
 
     );
   }
