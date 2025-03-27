@@ -372,6 +372,20 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
+          AnimatedOpacity(
+              opacity: isSearching ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: IgnorePointer(
+                  ignoring: !isSearching,
+                  child: GestureDetector(
+                      onTap: _toggleSearch,
+                      child: Container(
+                        color: Colors.black.withOpacity(0.6),
+                        width: double.infinity,
+                        height: double.infinity,
+                      )))),
+
           Positioned(
             top: 50,
             right: 16,
