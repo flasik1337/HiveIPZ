@@ -386,128 +386,104 @@ class _HomePageState extends State<HomePage> {
                         height: double.infinity,
                       )))),
 
-          Column(
-            children: <Widget>[
-              Positioned(
-                top: 50,
-                right: 16,
-                left: isSearching ? 16 : null,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOutCirc,
-                  width: searchBarWidth,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color:
-                        isSearching ? HiveColors.weakAccent : HiveColors.main,
-                    borderRadius: BorderRadius.circular(isSearching ? 30 : 28),
-                  ),
-                  child: isSearching
-                      ? Row(
-                          children: [
-                            /// Górny wiersz; wszukiwanie
-                            Expanded(
-                                child: RawAutocomplete<String>(
-                              textEditingController: _searchController,
-                              focusNode: FocusNode(),
-                              optionsViewBuilder:
-                                  (context, onSelected, options) {
-                                return Align(
-                                    alignment: Alignment.topLeft,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(top: 12),
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: MediaQuery.of(context)
-                                                  .size
-                                                  .width *
+          Positioned(
+            top: 50,
+            right: 16,
+            left: isSearching ? 16 : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOutCirc,
+              width: searchBarWidth,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isSearching ? HiveColors.weakAccent : HiveColors.main,
+                borderRadius: BorderRadius.circular(isSearching ? 30 : 28),
+              ),
+              child: isSearching
+                  ? Row(
+                      children: [
+                        Expanded(
+                            child: RawAutocomplete<String>(
+                          textEditingController: _searchController,
+                          focusNode: FocusNode(),
+                          optionsViewBuilder: (context, onSelected, options) {
+                            return Align(
+                                alignment: Alignment.topLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
                                               0.9,
-                                        ),
-                                        child: Material(
-                                          color: Colors.white,
-                                          elevation: 4.0,
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            shrinkWrap: true,
-                                            itemCount: options.length,
-                                            itemBuilder: (context, index) {
-                                              final option =
-                                                  options.elementAt(index);
-                                              return ListTile(
-                                                title: Text(option),
-                                                leading: Icon(Icons.history),
-                                                onTap: () => onSelected(option),
-                                              );
-                                            },
-                                          ),
-                                        ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.white,
+                                      elevation: 4.0,
+                                      borderRadius: BorderRadius.circular(30),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final option =
+                                              options.elementAt(index);
+                                          return ListTile(
+                                            title: Text(option),
+                                            leading: Icon(Icons.history),
+                                            onTap: () => onSelected(option),
+                                          );
+                                        },
                                       ),
-                                    ));
-                              },
-                              optionsBuilder:
-                                  (TextEditingValue textEditingValue) {
-                                if (textEditingValue.text.isEmpty) {
-                                  return const Iterable<String>.empty();
-                                }
-                                return recentSearches.where((search) => search
-                                    .toLowerCase()
-                                    .contains(
-                                        textEditingValue.text.toLowerCase()));
-                              },
-                              onSelected: (String selection) {
-                                _searchController.text = selection;
-                                _onSearch(selection);
-                              },
-                              fieldViewBuilder: (context, controller, focusNode,
-                                  onFieldSubmitted) {
-                                return TextField(
-                                  controller: controller,
-                                  focusNode: focusNode,
-                                  decoration: InputDecoration(
-                                    hintText: "Szukaj...",
-                                    border: InputBorder.none,
-                                    contentPadding:
-                                        EdgeInsets.symmetric(horizontal: 16),
+                                    ),
                                   ),
-                                  onSubmitted: (query) {
-                                    _onSearch(query);
-                                    _toggleSearch();
-                                  },
-                                );
+                                ));
+                          },
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return const Iterable<String>.empty();
+                            }
+                            return recentSearches.where((search) => search
+                                .toLowerCase()
+                                .contains(textEditingValue.text.toLowerCase()));
+                          },
+                          onSelected: (String selection) {
+                            _searchController.text = selection;
+                            _onSearch(selection);
+                          },
+                          fieldViewBuilder: (context, controller, focusNode,
+                              onFieldSubmitted) {
+                            return TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                hintText: "Szukaj...",
+                                border: InputBorder.none,
+                                contentPadding:
+                                    EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              onSubmitted: (query) {
+                                _onSearch(query);
+                                _toggleSearch();
                               },
-                            )),
-                            IconButton(
-                              icon: Icon(Icons.close, color: Colors.black),
-                              onPressed: _toggleSearch,
-                            ),
-                          ],
-                        )
-                      : IconButton(
-                          icon: Icon(Icons.search, color: Colors.black),
+                            );
+                          },
+                        )),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.black),
                           onPressed: _toggleSearch,
                         ),
-                ),
-              ),
-            ],
+                      ],
+                    )
+                  : IconButton(
+                      icon: Icon(Icons.search, color: Colors.black),
+                      onPressed: _toggleSearch,
+                    ),
+            ),
           ),
-
-          Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(child: Container()),  /// zielona sekcja z utoriala, body w którym można coś dać ale my to załatiwamy w Event_card
-                  Container(
-                    width: 100.0,
-                    color: Colors.red[200],
-                  )
-                ],
-              )
-          )
         ],
       ),
+
       bottomNavigationBar: !isSearching
           ? BottomAppBar(
               height: 80,
