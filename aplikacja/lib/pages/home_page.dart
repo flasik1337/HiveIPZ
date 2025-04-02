@@ -128,167 +128,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void showFilterModalBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Filtruj po:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              ListTile(
-                  title: const Text('Typ wydarzenia'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    showModalBottomSheet(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return EventTypeGrid(
-                              onEventTypeSelected: (String typeFilter) {
-                            EventFilterService.filterEventsByType(
-                                context, events, typeFilter);
-                          });
-                        });
-                  }),
-              ListTile(
-                title: const Text('Data'),
-                onTap: () {
-                  Navigator.pop(context);
-                  EventFilterService.showDateFilterDialog(context, events);
-                },
-              ),
-              ListTile(
-                  title: const Text('Lokalizacja'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    EventFilterService.showLocationFilterDialog(
-                        context, events);
-                  }),
-              ListTile(
-                  title: const Text('Cena'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    EventFilterService.showPriceFilterDialog(context, events);
-                  })
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void showSortingModalBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Sortuj według:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  // proponowane (domyślne), id = 0, (bez porządku, bo jedyny porządek to taki, że dajemy najfajniesze capiche?)
-                  ListTile(
-                    title: const Text('Proponowane'),
-                    tileColor: selectedSortingType == 0
-                        ? Colors.amber.withOpacity(0.3)
-                        : null,
-                    onTap: () {
-                      setModalState(() {
-                        selectedSortingType = 0;
-                      });
-                      // w tym miejscu funkcja sortująca po proponowanych
-                    },
-                  ),
-                  // po cenie, id=1
-                  ListTile(
-                    title: const Text('Cena'),
-                    tileColor: selectedSortingType == 1
-                        ? Colors.amber.withOpacity(0.3)
-                        : null,
-                    trailing: selectedSortingType == 1
-                        ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
-                        : null,
-                    onTap: () {
-                      setModalState(() {
-                        if (selectedSortingType != 1) {
-                          sortingAscending = false;
-                          selectedSortingType = 1;
-                        } else {
-                          sortingAscending = !sortingAscending;
-                        }
-                      });
-                      sortEventsByPrice(sortingAscending);
-                    },
-                  ),
-                  // po zapisanych uczestnikach, id=2
-                  ListTile(
-                    title: const Text('Zapisani uczestincy'),
-                    tileColor: selectedSortingType == 2
-                        ? Colors.amber.withOpacity(0.3)
-                        : null,
-                    trailing: selectedSortingType == 2
-                        ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
-                        : null,
-                    onTap: () {
-                      setModalState(() {
-                        if (selectedSortingType != 2) {
-                          sortingAscending = false;
-                          selectedSortingType = 2;
-                        } else {
-                          sortingAscending = !sortingAscending;
-                        }
-                      });
-                      sortEventsByParticipants(sortingAscending);
-                    },
-                  ),
-                  // po dacie, id=3
-                  ListTile(
-                    title: const Text('Data'),
-                    tileColor: selectedSortingType == 3
-                        ? Colors.amber.withOpacity(0.3)
-                        : null,
-                    trailing: selectedSortingType == 3
-                        ? Icon(sortingAscending
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down)
-                        : null,
-                    onTap: () {
-                      setModalState(() {
-                        if (selectedSortingType != 3) {
-                          sortingAscending = false;
-                          selectedSortingType = 3;
-                        } else {
-                          sortingAscending = !sortingAscending;
-                        }
-                      });
-                      sortEventsByDate(sortingAscending);
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   /// Obsługa NavigationBara na dole ekranu
   /// args:
@@ -330,7 +169,7 @@ class _HomePageState extends State<HomePage> {
           break;
         case 3:
           // Filtrowanie
-          showFilterModalBottomSheet();
+          EventFilterService.showFilterModalBottomSheet(context: context, events: events);
           break;
         case 4:
           // Profil użytkownika
@@ -371,6 +210,20 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                 ),
+
+          AnimatedOpacity(
+              opacity: isSearching ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: IgnorePointer(
+                  ignoring: !isSearching,
+                  child: GestureDetector(
+                      onTap: _toggleSearch,
+                      child: Container(
+                        color: Colors.black.withOpacity(0.6),
+                        width: double.infinity,
+                        height: double.infinity,
+                      )))),
 
           Positioned(
             top: 50,
@@ -468,45 +321,46 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
-
       ),
-      bottomNavigationBar: !isSearching ? BottomAppBar(
-        height: 80,
-        color: Colors.white,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              onPressed: () => _onBarTapped(0), // Strona główna
-              icon: Icon(Icons.home, color: Colors.black),
-            ),
-            IconButton(
-              onPressed: () => _onBarTapped(1), // Grywalizacja TODO
-              icon: Icon(Icons.hive, color: Colors.black),
-            ),
-            FloatingActionButton(
-              onPressed: () => _onBarTapped(2),
-              // Dodawanie wydarzenia
-              backgroundColor: Colors.amber,
-              elevation: 10.0,
-              // Wysokość unoszeinie się przycisku - tworzenie cienia
-              child: Icon(
-                Icons.add,
-                size: 28,
-              ),
-            ),
-            IconButton(
-              onPressed: () => _onBarTapped(3), // Filtry
-              icon: Icon(Icons.filter_alt_outlined, color: Colors.black),
-            ),
-            IconButton(
-              onPressed: () => _onBarTapped(4), // Profil użytkownika
-              icon: Icon(Icons.person, color: Colors.black),
-            )
-          ],
-        ),
-      ) : null,
 
+      bottomNavigationBar: !isSearching
+          ? BottomAppBar(
+              height: 80,
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    onPressed: () => _onBarTapped(0), // Strona główna
+                    icon: Icon(Icons.home, color: Colors.black),
+                  ),
+                  IconButton(
+                    onPressed: () => _onBarTapped(1), // Grywalizacja TODO
+                    icon: Icon(Icons.hive, color: Colors.black),
+                  ),
+                  FloatingActionButton(
+                    onPressed: () => _onBarTapped(2),
+                    // Dodawanie wydarzenia
+                    backgroundColor: Colors.amber,
+                    elevation: 10.0,
+                    // Wysokość unoszeinie się przycisku - tworzenie cienia
+                    child: Icon(
+                      Icons.add,
+                      size: 28,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _onBarTapped(3), // Filtry
+                    icon: Icon(Icons.filter_alt_outlined, color: Colors.black),
+                  ),
+                  IconButton(
+                    onPressed: () => _onBarTapped(4), // Profil użytkownika
+                    icon: Icon(Icons.person, color: Colors.black),
+                  )
+                ],
+              ),
+            )
+          : null,
     );
   }
 }

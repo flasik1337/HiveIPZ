@@ -6,6 +6,7 @@ class User {
   List<Event> registeredEvents;
   final String profilePicPath;
   final String password; // Hasło (zaszyfrowane)
+  List<String> recentSearches;
 
   User({
     required this.email,
@@ -13,7 +14,9 @@ class User {
     List<Event>? registeredEvents,
     required this.profilePicPath,
     required this.password,
-  }) : registeredEvents = registeredEvents ?? [];
+    List<String>? recentSearches,
+  }) : registeredEvents = registeredEvents ?? [],
+  recentSearches = recentSearches ?? [];
 
   // Dodanie wydarzenia do listy
   void registerEvent(Event event) {
