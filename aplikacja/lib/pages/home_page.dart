@@ -3,6 +3,7 @@ import 'package:Hive/widgets/event_type_grid.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/event.dart';
+import '../services/event_sorter_service.dart';
 import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
@@ -481,9 +482,51 @@ class _HomePageState extends State<HomePage> {
                     ),
             ),
           ),
+
+          Positioned(
+              top: MediaQuery.of(context).size.height - 290,
+              left: MediaQuery.of(context).size.width - 85,
+              child: Row(
+                children: [
+                  Container(
+                    width: 85,
+                    child: Column(
+                      verticalDirection: VerticalDirection.up,
+                      children: [
+                        ListTile(
+                          leading: Icon(Icons.import_export,
+                              size: 35, color: Colors.white),
+                          onTap: () {
+                            EventSorterService.showSortingModalBottomSheet(
+                              context: context,
+                              events: events,
+                              refresh: () => setState(() {}),
+                              selectedSortingType: selectedSortingType,
+                              sortingAscending: sortingAscending,
+                              onSortingChanged: (type, ascending) {
+                                setState(() {
+                                  selectedSortingType = type;
+                                  sortingAscending = ascending;
+                                });
+                              },
+                            );
+                          },
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.thumb_up_alt_outlined,
+                              size: 35, color: Colors.white),
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.thumb_down_alt_outlined,
+                              size: 35, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  )
+                ],
+              ))
         ],
       ),
-
       bottomNavigationBar: !isSearching
           ? BottomAppBar(
               height: 80,
