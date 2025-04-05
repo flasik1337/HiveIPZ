@@ -1,6 +1,7 @@
 import 'package:Hive/pages/filtered_list_page.dart';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
+import '../widgets/event_type_grid.dart';
 
 class EventFilterService {
   static void filterEventsByQuery(BuildContext context, List<Event> events, String query) {
@@ -200,6 +201,66 @@ class EventFilterService {
               child: const Text('OK'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  static void showFilterModalBottomSheet({
+    required BuildContext context,
+    required List<Event> events,
+
+}) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Filtruj po:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ListTile(
+                  title: const Text('Typ wydarzenia'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return EventTypeGrid(
+                              onEventTypeSelected: (String typeFilter) {
+                                EventFilterService.filterEventsByType(
+                                    context, events, typeFilter);
+                              });
+                        });
+                  }),
+              ListTile(
+                title: const Text('Data'),
+                onTap: () {
+                  Navigator.pop(context);
+                  EventFilterService.showDateFilterDialog(context, events);
+                },
+              ),
+              ListTile(
+                  title: const Text('Lokalizacja'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    EventFilterService.showLocationFilterDialog(
+                        context, events);
+                  }),
+              ListTile(
+                  title: const Text('Cena'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    EventFilterService.showPriceFilterDialog(context, events);
+                  })
+            ],
+          ),
         );
       },
     );
