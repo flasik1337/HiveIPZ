@@ -60,6 +60,12 @@
       <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/shared_preferences_windows/example/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/shared_preferences_windows/example/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/shared_preferences_windows/example/build" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/build" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/example/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/example/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/aplikacja/windows/flutter/ephemeral/.plugin_symlinks/local_auth_windows/example/build" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
