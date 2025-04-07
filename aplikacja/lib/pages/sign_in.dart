@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../database/database_helper.dart';
+import '../services/google_service.dart';
 import 'home_page.dart';
 import '../models/event.dart';
 import 'registration.dart';
@@ -117,8 +118,6 @@ void _completeLogin(String token, String userId) async {
   }
 }
 
-
-  
 
   void _showPinVerificationDialog(Map<String, dynamic> userData, String storedPin) {
     showDialog(
@@ -267,7 +266,9 @@ void _completeLogin(String token, String userId) async {
                       const SizedBox(width: 10),
                       IconButton(
                         icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
-                        onPressed: () {},
+                        onPressed: () {
+                          var googleUser = googleSignIn();
+                        },
                       ),
                     ],
                   ),
