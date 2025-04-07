@@ -267,7 +267,7 @@ void _completeLogin(String token, String userId) async {
                       IconButton(
                         icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
                         onPressed: () {
-                          var googleUser = googleSignIn();
+                          var googleUser = GoogleService.googleSignIn();
                         },
                       ),
                     ],
