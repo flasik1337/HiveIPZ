@@ -1,29 +1,50 @@
+import 'package:Hive/pages/home_page.dart';
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../database/database_helper.dart';
+import '../main.dart';
+import '../pages/event_preferences_page.dart';
 
 class GoogleService {
-  static Future<GoogleSignInAccount?> googleSignIn() async {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      scopes: <String>[
-        'email',
-      ],
-    );
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    clientId: '161099687654-094psfarrpc03dm0rmpcmv0oe55dsna3.apps.googleusercontent.com'
+  );
 
-    await googleSignIn.signOut();
+  static Future<void> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-    var googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        print('Logowanie anulowane');
+        return;
+      }
 
-    print(googleUser.toString());
+      final GoogleSignInAuthentication googleAuth =
+      await googleUser.authentication;
 
-    return googleUser;
-  }
+      final String? idToken = googleAuth.idToken;
+      if (idToken == null) throw Exception('Brak tokenu ID');
 
-  static Future<void> _registerGoogleUser(GoogleSignInAccount googleUser) async {
-      final name = googleUser.displayName!.contains(" ") ? googleUser.displayName?.split(" ")[0] : googleUser.displayName;
-      final surname = googleUser.displayName!.contains(" ") ? googleUser.displayName?.split(" ")[1] : "";
-      final age = 0;
-      final userNickname = googleUser.displayName;
-      final email = googleUser.email;
-      final password = googleUser.id;
+      // Wywołujemy metodę z DatabaseHelper
+      await DatabaseHelper.loginWithGoogle(idToken).then((userData) async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', userData['token']);
+        await prefs.setString('userId', userData['user']['id'].toString());
 
+        bool hasPreferences = await DatabaseHelper.getUserPreferences(userData['user']['id'].toString());
+
+        navigatorKey.currentState?.pushReplacement(
+          MaterialPageRoute(
+              builder: (context) => hasPreferences
+                  ? HomePage(events: [],)
+                  : EventPreferencesPage(userId: userData['user']['id'].toString()),
+          ),
+        );
+      });
+    } catch (e) {
+      print('Błąd logowania Google: $e');
+    }
   }
 }

@@ -267,7 +267,10 @@ void _completeLogin(String token, String userId) async {
                       IconButton(
                         icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
                         onPressed: () {
-                          var googleUser = GoogleService.googleSignIn();
+                          var googleUser = GoogleService.signInWithGoogle();
+                          // TODO sprawdź, czy istnieje użytkownik o takim mailu ? zaloguj po mail, id : wyowłaj rejestrację
+                          // być może trzeba będzie dodać wylogowanie google, ale nie wiem jak to śmignie jak użytkownik lognie się przez zwykłę konto np
+
                         },
                       ),
                     ],
