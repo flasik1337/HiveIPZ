@@ -178,10 +178,6 @@ class _PointsPageState extends State<PointsPage> {
                           fontSize: 34,
                           letterSpacing: 2.0,
                           fontWeight: FontWeight.w900,
-                          foreground: Paint()
-                            ..style = PaintingStyle.stroke
-                            ..strokeWidth = 2 // Dostosuj grubość obrysu
-                            ..color = Colors.black, // Dostosuj kolor obrysu
                         ),
                       )
                     ],
@@ -267,8 +263,8 @@ class _PointsPageState extends State<PointsPage> {
                                             0.1, // Zmniejszamy, aby zwiększyć zaokrąglenie
                                         child: ClipOval(
                                           child: Container(
-                                            width: 150,
-                                            height: 150,
+                                            width: 100,
+                                            height: 100,
                                             decoration: BoxDecoration(
                                               color: Colors.yellow,
                                             ),

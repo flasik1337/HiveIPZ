@@ -49,13 +49,16 @@ class _EventPageState extends State<EventPage> {
   bool isUserJoined = false; // Czy użytkownik jest zapisany na wydarzenie
   bool isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
   String? userId; // Przechowywanie userId
+  double? organizerRating;
+  bool ratingSent = false;
 
   @override
   void initState() {
     super.initState();
     currentEvent = widget.event;
     _fetchEvent();
-    _initializeUser(); // Inicjalizacja użytkownika
+    _initializeUser();
+    _loadRating();
   }
 
   void _addToGoogleCalendar() {
@@ -72,6 +75,7 @@ class _EventPageState extends State<EventPage> {
 
   calendar.Add2Calendar.addEvent2Cal(calendarEvent);
 }
+
 
 String? _selectedReason;
 final List<String> _reportReasons = [
@@ -141,16 +145,84 @@ void _showReportDialog() async {
 }
 
 
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+        builder: (context) {
+          int selectedRating = 3;
+
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return AlertDialog(
+                title: Text('Oceń organizatora'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Jak oceniasz to wydarzenie?'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < selectedRating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                          ),
+                          onPressed: () {
+                            setStateDialog(() {
+                              selectedRating = index + 1;
+                            });
+                          },
+                        );
+                      }),
+                    )
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      await DatabaseHelper.rateOrganizer(currentEvent.userId.toString(), selectedRating);
+                      if (!mounted) return;
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dziękujemy za ocenę!')));
+                      setState(() {
+                        ratingSent = true;
+                      });
+                      _loadRating();
+                    },
+                    child: Text('Zatwierdź'),
+                  )
+                ],
+              );
+            },
+          );
+        }
+    );
+  }
+
+
 
   Future<void> _initializeUser() async {
     try {
       userId = await DatabaseHelper.getUserIdFromToken();
-      _checkUserJoinedStatus();
-      _checkIfUserIsOwner();
+      await _checkUserJoinedStatus();
+      await _checkIfUserIsOwner();
+
+      final hasRated = await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
+
+      if (currentEvent.startDate.isBefore(DateTime.now()) &&
+          isUserJoined &&
+          !isUserOwner &&
+          !hasRated) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showRatingDialog();
+        });
+      }
+
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
   }
+
 
   Future<void> _fetchEvent() async {
     try {
@@ -253,7 +325,7 @@ void _showReportDialog() async {
 
 
 
-  void _checkIfUserIsOwner() {
+  Future<void> _checkIfUserIsOwner() async{
     if (userId != null) {
       if (!mounted) return;
       setState(() {
@@ -329,6 +401,19 @@ void _showReportDialog() async {
     }
   }
 
+  void _loadRating() async {
+    try {
+      final rating = await DatabaseHelper.getOrganizerRating(currentEvent.userId.toString());
+      if (!mounted) return;
+      setState(() {
+        organizerRating = rating;
+      });
+    } catch (e) {
+      print("Błąd ładowania oceny: $e");
+    }
+  }
+
+
   // Wyświetlenie okna z komentarzami
   void _showCommentsModal(BuildContext context) {
     // Używamy naszej funkcji pomocniczej z modułu comment_section.dart
@@ -374,6 +459,7 @@ void _showReportDialog() async {
                   style: HiveTextStyles.title,
                 ),
               ),
+
               Positioned(
                 top: 16,
                 right: 16,
@@ -395,8 +481,20 @@ void _showReportDialog() async {
                   ],
                 ),
               ),
+
+              if (organizerRating != null)
+                Positioned(
+                  bottom: 0,
+                  left: 16,
+                  child: Text(
+                    'Ocena organizatora: ⭐ ${organizerRating!.toStringAsFixed(1)} / 5',
+                    style: const TextStyle(fontSize: 14, color: Colors.white),
+                  ),
+                ),
+
             ],
           ),
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -516,7 +614,7 @@ void _showReportDialog() async {
                 child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
               ),
             ),
-             
+
         ],
       ),
     );
