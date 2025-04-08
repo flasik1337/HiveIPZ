@@ -76,6 +76,75 @@ class _EventPageState extends State<EventPage> {
   calendar.Add2Calendar.addEvent2Cal(calendarEvent);
 }
 
+
+String? _selectedReason;
+final List<String> _reportReasons = [
+  'Nieodpowiednia treść',
+  'Fałszywe wydarzenie',
+  'Spam',
+  'Inny powód'
+];
+
+void _showReportDialog() async {
+  String? selectedReason;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: MediaQuery.of(context).viewInsets.add(const EdgeInsets.all(16.0)),
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Zgłoś wydarzenie', style: TextStyle(fontSize: 18)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'Wybierz powód'),
+                  items: _reportReasons.map((reason) {
+                    return DropdownMenuItem<String>(
+                      value: reason,
+                      child: Text(reason),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedReason = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: selectedReason == null ? null : () async {
+                    try {
+                      await DatabaseHelper.reportEvent(currentEvent.id, selectedReason!);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Zgłoszenie wysłane')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Błąd: ${e.toString()}')),
+                      );
+                    }
+                  },
+                  child: const Text('Wyślij zgłoszenie'),
+                )
+              ],
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+
   void _showRatingDialog() {
     showDialog(
       context: context,
@@ -129,6 +198,7 @@ class _EventPageState extends State<EventPage> {
         }
     );
   }
+
 
 
   Future<void> _initializeUser() async {
@@ -389,6 +459,29 @@ class _EventPageState extends State<EventPage> {
                   style: HiveTextStyles.title,
                 ),
               ),
+
+              Positioned(
+                top: 16,
+                right: 16,
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  onSelected: (value) {
+                    if (value == 'report') {
+                      _showReportDialog();
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'report',
+                      child: ListTile(
+                        leading: Icon(Icons.report_gmailerrorred, color: Colors.red),
+                        title: Text('Zgłoś wydarzenie'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               if (organizerRating != null)
                 Positioned(
                   bottom: 0,
@@ -398,6 +491,7 @@ class _EventPageState extends State<EventPage> {
                     style: const TextStyle(fontSize: 14, color: Colors.white),
                   ),
                 ),
+
             ],
           ),
 
