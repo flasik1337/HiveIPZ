@@ -676,6 +676,28 @@ class DatabaseHelper {
     }
   }
 
+  static Future<void> reportEvent(String eventId, String reason) async {
+  final token = await _getToken();
+  if (token == null) throw Exception('Brak tokenu');
+
+  final response = await http.post(
+    Uri.parse('$link/report_event'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    },
+    body: jsonEncode({
+      'event_id': eventId,
+      'reason': reason
+    }),
+  );
+
+  if (response.statusCode != 201) {
+    throw Exception(jsonDecode(response.body)['error'] ?? 'Nie udało się zgłosić wydarzenia');
+  }
+}
+
+
 
 
 
