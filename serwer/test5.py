@@ -766,6 +766,33 @@ def get_users_events(user_id):
         return jsonify(events), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/report_event', methods=['POST'])
+def report_event():
+    try:
+        data = request.get_json()
+        event_id = data['event_id']
+        reason = data['reason']
+
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+        cursor.execute("INSERT INTO event_reports (event_id, reason, user_id) VALUES (%s, %s, %s)", (event_id, reason, user_id))
+        mydb.commit()
+        return jsonify({'message': 'Zgłoszenie zostało zapisane'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':
