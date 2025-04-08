@@ -88,6 +88,7 @@ class _EventPageState extends State<EventPage> {
     try {
       final eventData = await DatabaseHelper.getEvent(widget.event.id);
       if (eventData != null) {
+        if (!mounted) return;
         setState(() {
           currentEvent = Event.fromJson(eventData);
         });
@@ -99,62 +100,94 @@ class _EventPageState extends State<EventPage> {
 
   void _showParticipantsModal(BuildContext context) async {
     List<String> participants = await DatabaseHelper.getEventParticipants(currentEvent.id);
+    List<String> bannedUsers = await DatabaseHelper.getBannedUsers(currentEvent.id);
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          height: 300,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Lista uczestników',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            Future<void> refreshLists() async {
+              final updatedParticipants = await DatabaseHelper.getEventParticipants(currentEvent.id);
+              final updatedBanned = await DatabaseHelper.getBannedUsers(currentEvent.id);
+              setModalState(() {
+                participants = updatedParticipants;
+                bannedUsers = updatedBanned;
+              });
+            }
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              height: 500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Uczestnicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: participants.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(participants[index]),
+                          trailing: isUserOwner
+                              ? IconButton(
+                            icon: const Icon(Icons.block, color: Colors.red),
+                            onPressed: () async {
+                              await DatabaseHelper.banUser(currentEvent.id, participants[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Użytkownik został zbanowany')),
+                              );
+                              await refreshLists();
+                            },
+                          )
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Zbanowani użytkownicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: bannedUsers.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: const Icon(Icons.person_off, color: Colors.red),
+                          title: Text(bannedUsers[index]),
+                          trailing: isUserOwner
+                              ? IconButton(
+                            icon: const Icon(Icons.undo, color: Colors.green),
+                            onPressed: () async {
+                              await DatabaseHelper.unbanUser(currentEvent.id, bannedUsers[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Użytkownik został odbanowany')),
+                              );
+                              await refreshLists();
+                            },
+                          )
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-              const Divider(),
-              Expanded(
-                child: participants.isEmpty
-                    ? const Center(child: Text('Brak uczestników'))
-                    : ListView.builder(
-                  itemCount: participants.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      leading: const Icon(Icons.person),
-                      title: Text(participants[index]),
-                      trailing: isUserOwner
-                          ? IconButton(
-                        icon: Icon(Icons.block, color: Colors.red),
-                        onPressed: () async {
-                          try {
-                            await DatabaseHelper.banUser(
-                                currentEvent.id, participants[index]);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Użytkownik zbanowany')),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Błąd: $e')),
-                            );
-                          }
-                        },
-                      )
-                          : null,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
 
+
   void _checkIfUserIsOwner() {
     if (userId != null) {
+      if (!mounted) return;
       setState(() {
         isUserOwner = currentEvent.userId == int.tryParse(userId!);
       });
@@ -169,6 +202,7 @@ class _EventPageState extends State<EventPage> {
         final isJoined = await DatabaseHelper.isUserJoinedEvent(
             currentEvent.id, userId!);
 
+        if (!mounted) return;
         setState(() {
           isUserJoined = isJoined;
         });
@@ -183,6 +217,7 @@ class _EventPageState extends State<EventPage> {
       if (isUserJoined) {
         // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
+        if (!mounted) return;
         setState(() {
           isUserJoined = false;
           currentEvent = currentEvent.copyWith(
@@ -213,6 +248,7 @@ class _EventPageState extends State<EventPage> {
 
         // Zapisz użytkownika na wydarzenie
         await DatabaseHelper.joinEvent(currentEvent.id);
+        if (!mounted) return;
         setState(() {
           isUserJoined = true;
           currentEvent = currentEvent.copyWith(
@@ -332,6 +368,7 @@ class _EventPageState extends State<EventPage> {
                         builder: (context) => EditEventPage(
                           event: currentEvent,
                           onSave: (updatedEvent) {
+                            if (!mounted) return;
                             setState(() {
                               currentEvent = updatedEvent;
                             });
@@ -361,6 +398,7 @@ class _EventPageState extends State<EventPage> {
                           'is_promoted': updated.isPromoted,
                         },
                       );
+                      if (!mounted) return;
                       setState(() {
                         currentEvent = updated;
                       });

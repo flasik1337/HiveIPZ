@@ -175,7 +175,7 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['event'];
+      return data is Map<String, dynamic> ? data : null;
     } else {
       final error = jsonDecode(response.body)['message'];
       throw Exception(error);
@@ -621,4 +621,42 @@ class DatabaseHelper {
       throw Exception('Błąd podczas zgłaszania komentarza: $error');
     }
   }
+
+  static Future<List<String>> getBannedUsers(String eventId) async {
+    final url = Uri.parse('$link/events/$eventId/banned_users');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.cast<String>();
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd pobierania zbanowanych użytkowników: $error');
+    }
+  }
+
+
+  static Future<void> unbanUser(String eventId, String nickName) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Brak tokenu sesji.');
+
+    final url = Uri.parse('$link/events/$eventId/unban');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'nickName': nickName}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas odbanowywania: $error');
+    }
+  }
+
+
+
+
 }
