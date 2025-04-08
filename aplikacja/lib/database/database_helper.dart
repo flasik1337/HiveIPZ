@@ -75,6 +75,26 @@ class DatabaseHelper {
     }
   }
 
+  static Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    final url = Uri.parse('$link/google_login');
+    final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id_token': idToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data['token']);
+      print('Zalogowano przez Google jako: ${data['user']['nickName']}');
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Logowanie Google nie powiodło się: $error');
+    }
+  }
+
   static Future<void> verifyToken(String token) async {
     final url = Uri.parse(
         '$link/verify_token'); // Zakładając, że endpoint to '/verify_token'

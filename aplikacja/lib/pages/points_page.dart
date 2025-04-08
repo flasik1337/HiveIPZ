@@ -159,7 +159,7 @@ class _PointsPageState extends State<PointsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Image.asset(
-                    '../assets/honeycoins.png', // Zastąp nazwą swojego pliku PNG
+                    'assets/honeycoins.png', // Zastąp nazwą swojego pliku PNG
                     height: 100, // Opcjonalnie, ustaw wysokość ikony
                     width: 100, // Opcjonalnie, ustaw szerokość ikony
                   ),
