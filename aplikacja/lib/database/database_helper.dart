@@ -598,4 +598,27 @@ class DatabaseHelper {
       throw Exception('Błąd podczas usuwania komentarza: $error');
     }
   }
+  
+  // Zgłaszanie komentarza moderatorom
+  static Future<void> reportComment(String eventId, String commentId, String reason) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/comments/$commentId/report');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'reason': reason}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas zgłaszania komentarza: $error');
+    }
+  }
 }

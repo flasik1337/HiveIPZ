@@ -106,6 +106,106 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
+  // Pokazuje dialog do zgłaszania komentarza
+  void _showReportDialog(Comment comment) {
+    final TextEditingController reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Zgłoś komentarz'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Autor: ${comment.username}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Treść: ${comment.text}'),
+            const SizedBox(height: 12),
+            const Text('Powód zgłoszenia:'),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Opisz dlaczego zgłaszasz ten komentarz',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Podaj powód zgłoszenia')),
+                );
+                return;
+              }
+              
+              try {
+                await DatabaseHelper.reportComment(
+                  widget.eventId,
+                  comment.id,
+                  reason,
+                );
+                
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Komentarz został zgłoszony')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Błąd podczas zgłaszania: $e')),
+                );
+              }
+            },
+            child: const Text('Zgłoś'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pokazuje kontekstowe menu po przytrzymaniu komentarza
+  void _showContextMenu(BuildContext context, Offset position, Comment comment) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    
+    showMenu(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(position.dx, position.dy, 1, 1),
+        Rect.fromLTWH(0, 0, overlay.size.width, overlay.size.height),
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'report',
+          child: Row(
+            children: const [
+              Icon(Icons.flag, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Zgłoś komentarz'),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'report') {
+        _showReportDialog(comment);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -139,33 +239,52 @@ class _CommentSectionState extends State<CommentSection> {
                         itemCount: comments.length,
                         itemBuilder: (context, index) {
                           final comment = comments[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      comment.username,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                          return GestureDetector(
+                            onLongPress: () {
+                              final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                              final position = renderBox.localToGlobal(Offset.zero);
+                              _showContextMenu(context, position, comment);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        comment.username,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      _formatDate(comment.createdAt),
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
+                                      Row(
+                                        children: [
+                                          Text(
+                                            _formatDate(comment.createdAt),
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.report_problem, size: 16, color: Colors.red),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () {
+                                              _showReportDialog(comment);
+                                            },
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(comment.text),
-                                const Divider(),
-                              ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(comment.text),
+                                  const Divider(),
+                                ],
+                              ),
                             ),
                           );
                         },
