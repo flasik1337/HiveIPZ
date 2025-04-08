@@ -1,0 +1,355 @@
+import 'package:flutter/material.dart';
+import '../models/comments.dart';
+import '../database/database_helper.dart';
+import '../styles/hive_colors.dart';
+
+class CommentSection extends StatefulWidget {
+  final String eventId;
+
+  const CommentSection({
+    Key? key,
+    required this.eventId,
+  }) : super(key: key);
+
+  @override
+  State<CommentSection> createState() => _CommentSectionState();
+}
+
+class _CommentSectionState extends State<CommentSection> {
+  final TextEditingController commentController = TextEditingController();
+  List<Comment> comments = [];
+  bool isLoadingComments = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchComments();
+  }
+
+  // Pobranie komentarzy z serwera
+  Future<void> _fetchComments() async {
+    setState(() {
+      isLoadingComments = true;
+    });
+    
+    try {
+      // Pobieranie komentarzy z serwera poprzez DatabaseHelper
+      final commentsData = await DatabaseHelper.getEventComments(widget.eventId);
+      
+      setState(() {
+        comments = commentsData.map((commentJson) => Comment.fromJson(commentJson)).toList();
+      });
+    } catch (e) {
+      print('Błąd podczas pobierania komentarzy: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się pobrać komentarzy')),
+      );
+      
+      // W przypadku błędu - wyświetl przykładowe komentarze do testowania UI
+      // Docelowo ten kod powinien zostać usunięty po pełnej implementacji API komentarzy
+      setState(() {
+        comments = [
+          Comment(
+            id: '1',
+            userId: '123',
+            username: 'Użytkownik1',
+            text: 'Super wydarzenie! Na pewno przyjdę.',
+            createdAt: DateTime.now().subtract(Duration(days: 2)),
+          ),
+          Comment(
+            id: '2',
+            userId: '456',
+            username: 'Użytkownik2',
+            text: 'Jaki jest plan na to wydarzenie?',
+            createdAt: DateTime.now().subtract(Duration(hours: 5)),
+          ),
+        ];
+      });
+    } finally {
+      setState(() {
+        isLoadingComments = false;
+      });
+    }
+  }
+
+  // Dodanie nowego komentarza
+  Future<void> _addComment(String text) async {
+    if (text.trim().isEmpty) return;
+    
+    try {
+      // Dodawanie komentarza na serwerze poprzez DatabaseHelper
+      await DatabaseHelper.addEventComment(widget.eventId, text);
+      
+      // Po pomyślnym dodaniu komentarza pobieramy zaktualizowaną listę komentarzy
+      await _fetchComments();
+    } catch (e) {
+      print('Błąd podczas dodawania komentarza: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się dodać komentarza')),
+      );
+    }
+  }
+
+  // Formatowanie daty dla komentarzy
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays} dni temu';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} godz. temu';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} min. temu';
+    } else {
+      return 'Przed chwilą';
+    }
+  }
+
+  // Pokazuje dialog do zgłaszania komentarza
+  void _showReportDialog(Comment comment) {
+    final TextEditingController reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Zgłoś komentarz'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Autor: ${comment.username}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Treść: ${comment.text}'),
+            const SizedBox(height: 12),
+            const Text('Powód zgłoszenia:'),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Opisz dlaczego zgłaszasz ten komentarz',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Podaj powód zgłoszenia')),
+                );
+                return;
+              }
+              
+              try {
+                await DatabaseHelper.reportComment(
+                  widget.eventId,
+                  comment.id,
+                  reason,
+                );
+                
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Komentarz został zgłoszony')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Błąd podczas zgłaszania: $e')),
+                );
+              }
+            },
+            child: const Text('Zgłoś'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pokazuje kontekstowe menu po przytrzymaniu komentarza
+  void _showContextMenu(BuildContext context, Offset position, Comment comment) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    
+    showMenu(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(position.dx, position.dy, 1, 1),
+        Rect.fromLTWH(0, 0, overlay.size.width, overlay.size.height),
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'report',
+          child: Row(
+            children: const [
+              Icon(Icons.flag, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Zgłoś komentarz'),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'report') {
+        _showReportDialog(comment);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      height: MediaQuery.of(context).size.height * 0.7,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Komentarze',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: isLoadingComments
+                ? const Center(child: CircularProgressIndicator())
+                : comments.isEmpty
+                    ? const Center(child: Text('Nie ma jeszcze komentarzy'))
+                    : ListView.builder(
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = comments[index];
+                          return GestureDetector(
+                            onLongPress: () {
+                              final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                              final position = renderBox.localToGlobal(Offset.zero);
+                              _showContextMenu(context, position, comment);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        comment.username,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            _formatDate(comment.createdAt),
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.report_problem, size: 16, color: Colors.red),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () {
+                                              _showReportDialog(comment);
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(comment.text),
+                                  const Divider(),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: commentController,
+                  decoration: InputDecoration(
+                    hintText: 'Dodaj komentarz...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(
+                        color: HiveColors.main,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(
+                        color: HiveColors.main,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  maxLines: 2,
+                  minLines: 1,
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.send,
+                  color: HiveColors.main,
+                ),
+                onPressed: () {
+                  _addComment(commentController.text).then((_) {
+                    commentController.clear();
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Pomocnicza metoda do wyświetlania sekcji komentarzy w oknie modalnym
+void showCommentsModal(BuildContext context, String eventId) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: CommentSection(eventId: eventId),
+      );
+    },
+  );
+}
