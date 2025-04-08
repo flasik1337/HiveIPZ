@@ -202,6 +202,23 @@ class DatabaseHelper {
     }
   }
 
+  static Future<bool> hasUserRated(String organizerId) async {
+    final token = await _getToken();
+    final url = Uri.parse('$link/has_rated/$organizerId');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['hasRated'] == true;
+    } else {
+      throw Exception('Nie udało się sprawdzić czy użytkownik ocenił');
+    }
+  }
+
+
   //Pobieranie wszystkich wydarzeń
   static Future<List<Map<String, dynamic>>> getAllEvents() async {
     var url = Uri.parse('$link/events');
@@ -676,6 +693,38 @@ class DatabaseHelper {
     }
   }
 
+  static Future<double> getOrganizerRating(String organizerId) async {
+    final url = Uri.parse('$link/organizer/$organizerId/rating');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return double.tryParse(data['average_rating'].toString()) ?? 0.0;
+    } else {
+      throw Exception('Błąd pobierania oceny organizatora');
+    }
+  }
+
+
+
+  static Future<void> rateOrganizer(String organizerId, int rating) async {
+    final token = await _getToken();
+    final url = Uri.parse('$link/rate_organizer');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'organizer_id': organizerId,
+        'rating': rating,
+      }),
+    );
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Nie udało się zapisać oceny: $error');
+    }
+  }
 
 
 
