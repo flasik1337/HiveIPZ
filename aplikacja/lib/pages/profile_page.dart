@@ -10,12 +10,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
-import 'event_page.dart';
+import '../pages/event_page.dart';
 import "package:flutter/material.dart";
 import '../models/event.dart';
 import '../pages/event_page.dart';
 import '../styles/text_styles.dart';
 import '../styles/hive_colors.dart';
+
 
 /// Strona profilu użytkownika
 class ProfilePage extends StatefulWidget {
@@ -25,18 +26,129 @@ class ProfilePage extends StatefulWidget {
   _ProfilePageState createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? userData;
   List<dynamic>? userEvents = [];
   int? userId;
   File? _localImage;
+  late TabController _tabController;
+  List<dynamic> adminEvents = [];
+  List<dynamic> joinedEvents = [];
+
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchUserData();
-    _fetchUserEvents();
+    _fetchAdminEvents();
+    _fetchJoinedEvents();
   }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+
+
+  Future<void> _fetchAdminEvents() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final response = await http.get(
+      Uri.parse('https://vps.jakosinski.pl:5000/user_events'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    print('Admin Events Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      if (!mounted) return;
+      setState(() {
+        adminEvents = jsonDecode(response.body);
+      });
+    }
+  }
+
+
+  Widget _buildEventGrid(List<dynamic> events) {
+    print('Buduję kafelki dla: ${events.length} wydarzeń');
+    if (events.isEmpty) {
+      return const Center(child: Text("Brak wydarzeń"));
+    }
+
+    List<Event> parsedEvents = events
+        .map((e) => Event.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: parsedEvents.length,
+      itemBuilder: (context, index) {
+        final event = parsedEvents[index];
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EventPage(
+                  event: event,
+                  onUpdate: (_) {},
+                ),
+              ),
+            );
+          },
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      event.imagePath.isNotEmpty ? event.imagePath : 'assets/default_event.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(event.name),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  Future<void> _fetchJoinedEvents() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final response = await http.get(
+      Uri.parse('https://vps.jakosinski.pl:5000/joined_events'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    print('AdminEvents response: ${response.body}');
+
+
+    if (response.statusCode == 200) {
+      if (!mounted) return;
+      setState(() {
+        joinedEvents = jsonDecode(response.body);
+      });
+    }
+  }
+
 
   Future<void> _fetchUserData() async {
     try {
@@ -56,6 +168,7 @@ class _ProfilePageState extends State<ProfilePage> {
         profileImage = File(profileImagePath);
       }
 
+      if (!mounted) return;
       setState(() {
         userData = data;
         userId = data?['id'];
@@ -94,6 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (response.statusCode == 200) {
         final List<dynamic> events = jsonDecode(response.body);
+        if (!mounted) return;
         setState(() {
           userEvents = events;
         });
@@ -124,6 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final File file = File('${directory.path}/default_avatar.png');
     await file.writeAsBytes(data.buffer.asUint8List());
 
+    if (!mounted) return;
     setState(() {
       _localImage = file;
     });
@@ -138,6 +253,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final File newImage =
         await image.copy('${directory.path}/profile_image.png');
 
+    if (!mounted) return;
     setState(() {
       _localImage = newImage;
     });
@@ -147,6 +263,7 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString('profileImagePath', newImage.path);
 
     // Opcjonalnie: zaktualizuj obraz w interfejsie
+    if (!mounted) return;
     setState(() {
       userData?['profileImage'] = newImage.path;
     });
@@ -304,91 +421,29 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(10),
-                      topRight: Radius.circular(10),
+                child: Column(
+                  children: [
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.orange,
+                      unselectedLabelColor: Colors.white,
+                      tabs: const [
+                        Tab(text: 'Administrowane'),
+                        Tab(text: 'Zapisane'),
+                      ],
                     ),
-                  ),
-                  child: (userEvents == null || userEvents!.isEmpty)
-                      ? const Center(
-                          child: Text(
-                            'Brak przyszłych wydarzeń',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        )
-                      : GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10.0, // Odstępy między kolumnami
-                            mainAxisSpacing: 10.0, // Odstępy między wierszami
-                            childAspectRatio:
-                                1.0, // Równy stosunek szerokości do wysokości
-                          ),
-                          itemCount: userEvents!.length,
-                          itemBuilder: (context, index) {
-                            final event = Event.fromJson(
-                                userEvents![index] as Map<String, dynamic>);
-
-                            return GridTile(
-                                child: Card(
-                              elevation: 5.0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Container(
-                                width: double.infinity, // Pełna szerokość
-                                height: double.infinity, // Pełna wysokość
-                                decoration: BoxDecoration(
-                                  color: Colors.yellow,
-                                  // Żółte tło całego GridTile
-                                  borderRadius: BorderRadius.circular(
-                                      10), // Zaokrąglone rogi
-                                ),
-
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  // Wyśrodkowanie zawartości
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 160,
-                                      // Szerokość kontenera (możesz dostosować)
-                                      height: 160,
-                                      // Wysokość kontenera (możesz dostosować)
-                                      decoration: BoxDecoration(
-                                        color: HiveColors.main,
-                                        // Żółte tło kontenera
-                                        borderRadius: BorderRadius.circular(
-                                            10), // Zaokrąglenie rogów
-                                      ),
-                                      child: Center(
-                                        // Wyśrodkowanie obrazu w kontenerze
-                                        child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          // Zaokrąglenie rogów obrazu
-                                          child: Image.asset(
-                                            event
-                                                .imagePath, // Ścieżka do obrazu
-                                            fit: BoxFit
-                                                .cover, // Dopasowanie obrazu do kontenera
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ));
-                          },
-                        ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildEventGrid(adminEvents),
+                          _buildEventGrid(joinedEvents),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              )
+              ),
             ],
           ),
         ],

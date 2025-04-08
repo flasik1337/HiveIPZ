@@ -47,7 +47,8 @@ class Event {
       cena: json['cena'] != null
           ? double.tryParse(json['cena'].toString()) ?? 0.0
           : 0.0,
-      isPromoted: json['is_promoted'] == 1,
+      isPromoted: json['is_promoted'] == 1 || json['is_promoted'] == true,
+
     );
   }
 

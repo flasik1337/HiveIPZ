@@ -4,10 +4,10 @@ import '../styles/gradients.dart';
 import '../pages/edit_event_page.dart';
 import '../database/database_helper.dart';
 import '../styles/text_styles.dart';
+import '../styles/hive_colors.dart';
 import '../widgets/payment_dialog.dart';
+import '../widgets/comment_section.dart';
 import 'package:add_2_calendar/add_2_calendar.dart' as calendar;
-
-
 
 /// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
@@ -225,12 +225,25 @@ class _EventPageState extends State<EventPage> {
     }
   }
 
+  // Wyświetlenie okna z komentarzami
+  void _showCommentsModal(BuildContext context) {
+    // Używamy naszej funkcji pomocniczej z modułu comment_section.dart
+    showCommentsModal(context, currentEvent.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     const double photoHeight = 300;
 
     return Scaffold(
       backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _showCommentsModal(context);
+        },
+        backgroundColor: HiveColors.main,
+        child: const Icon(Icons.chat, color: Colors.black),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
