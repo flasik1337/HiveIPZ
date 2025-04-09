@@ -75,6 +75,26 @@ class DatabaseHelper {
     }
   }
 
+  static Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    final url = Uri.parse('$link/google_login');
+    final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id_token': idToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data['token']);
+      print('Zalogowano przez Google jako: ${data['user']['nickName']}');
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Logowanie Google nie powiodło się: $error');
+    }
+  }
+
   static Future<void> verifyToken(String token) async {
     final url = Uri.parse(
         '$link/verify_token'); // Zakładając, że endpoint to '/verify_token'
@@ -175,12 +195,29 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['event'];
+      return data is Map<String, dynamic> ? data : null;
     } else {
       final error = jsonDecode(response.body)['message'];
       throw Exception(error);
     }
   }
+
+  static Future<bool> hasUserRated(String organizerId) async {
+    final token = await _getToken();
+    final url = Uri.parse('$link/has_rated/$organizerId');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['hasRated'] == true;
+    } else {
+      throw Exception('Nie udało się sprawdzić czy użytkownik ocenił');
+    }
+  }
+
 
   //Pobieranie wszystkich wydarzeń
   static Future<List<Map<String, dynamic>>> getAllEvents() async {
@@ -515,4 +552,203 @@ class DatabaseHelper {
       throw Exception('Nie udało się zaktualizować preferencji');
     }
   }
+
+  static Future<String?> getUserNickname() async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+      }
+      
+      // Pobierz dane użytkownika na podstawie tokenu
+      final userData = await getUserByToken(token);
+      if (userData != null && userData.containsKey('nickName')) {
+        return userData['nickName'];
+      }
+      return null;
+    } catch (e) {
+      print('Błąd podczas pobierania nicku użytkownika: $e');
+      return null;
+    }
+  }
+
+  // Pobieranie komentarzy dla wydarzenia
+  static Future<List<Map<String, dynamic>>> getEventComments(String eventId) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/comments');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas pobierania komentarzy: $error');
+    }
+  }
+
+  // Dodawanie komentarza do wydarzenia
+  static Future<void> addEventComment(String eventId, String text) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/comments');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'text': text}),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas dodawania komentarza: $error');
+    }
+  }
+
+  // Usuwanie komentarza do wydarzenia (dla moderatorów lub autora komentarza)
+  static Future<void> deleteEventComment(String eventId, String commentId) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/comments/$commentId');
+    final response = await http.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas usuwania komentarza: $error');
+    }
+  }
+  
+  // Zgłaszanie komentarza moderatorom
+  static Future<void> reportComment(String eventId, String commentId, String reason) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/comments/$commentId/report');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'reason': reason}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas zgłaszania komentarza: $error');
+    }
+  }
+
+  static Future<List<String>> getBannedUsers(String eventId) async {
+    final url = Uri.parse('$link/events/$eventId/banned_users');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.cast<String>();
+    } else {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd pobierania zbanowanych użytkowników: $error');
+    }
+  }
+
+
+  static Future<void> unbanUser(String eventId, String nickName) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Brak tokenu sesji.');
+
+    final url = Uri.parse('$link/events/$eventId/unban');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'nickName': nickName}),
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas odbanowywania: $error');
+    }
+  }
+
+
+  static Future<void> reportEvent(String eventId, String reason) async {
+  final token = await _getToken();
+  if (token == null) throw Exception('Brak tokenu');
+
+  final response = await http.post(
+    Uri.parse('$link/report_event'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    },
+    body: jsonEncode({
+      'event_id': eventId,
+      'reason': reason
+    }),
+  );
+
+  if (response.statusCode != 201) {
+    throw Exception(jsonDecode(response.body)['error'] ?? 'Nie udało się zgłosić wydarzenia');
+  }
+}
+
+
+  static Future<double> getOrganizerRating(String organizerId) async {
+    final url = Uri.parse('$link/organizer/$organizerId/rating');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return double.tryParse(data['average_rating'].toString()) ?? 0.0;
+    } else {
+      throw Exception('Błąd pobierania oceny organizatora');
+    }
+  }
+
+
+
+  static Future<void> rateOrganizer(String organizerId, int rating) async {
+    final token = await _getToken();
+    final url = Uri.parse('$link/rate_organizer');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'organizer_id': organizerId,
+        'rating': rating,
+      }),
+    );
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Nie udało się zapisać oceny: $error');
+    }
+  }
+
+
+
 }

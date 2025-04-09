@@ -12,6 +12,9 @@ import base64
 import socket
 import re # Obsługa regexa
 from datetime import timedelta # Obsługa czasu niekatywnosci
+import json
+from google.oauth2 import id_token
+from google.auth.transport import requests as grequests
 
 
 load_dotenv()
@@ -195,15 +198,15 @@ def login():
         if existing_record:
             # Jeżeli taki rekord instieje, aktualizuuemy go
             update_info_sql = """
-                        UPDATE users_info
-                        SET last_login = %s, token_expires_at = %s
+                        UPDATE users_info 
+                        SET last_login = %s, token_expires_at = %s 
                         WHERE userID = %s
                     """
             cursor.execute(update_info_sql, (current_time, expires_at, user_id))
         else:
             # Jeżeli go nie ma ^ tworzymy
             insert_info_sql = """
-                        INSERT INTO users_info (userID, last_login, token_expires_at)
+                        INSERT INTO users_info (userID, last_login, token_expires_at) 
                         VALUES (%s, %s, %s)
                     """
             cursor.execute(insert_info_sql, (user_id, current_time, expires_at))
@@ -226,6 +229,55 @@ def login():
         print(f"[SERVER_ERROR] {str(e)}")  # Logowanie błędów serwera
         return jsonify({'message': f'Błąd serwera: {str(e)}'}), 500
 
+@app.route('/google_login', methods=['POST'])
+def google_login():
+    try:
+        data = request.get_json()
+        id_token_str = data.get('id_token')
+
+        if not id_token_str:
+            return jsonify({'error': 'Brak tokenu'}), 400
+
+        # Weryfikacja tokenu z Google
+        idinfo = id_token.verify_oauth2_token(id_token_str, grequests.Request())
+
+        email = idinfo['email']
+        name = idinfo.get('name', '')
+        nickname = email.split('@')[0]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            # Rejestracja nowego użytkownika
+            cursor.execute("""
+                INSERT INTO users (nickName, imie, nazwisko, wiek, email, password, is_verified)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (nickname, name, '', 18, email, '', 1))
+            mydb.commit()
+
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+        # Wygenerowanie i zapis tokenu
+        token = secrets.token_urlsafe(32)
+        cursor.execute("UPDATE users SET token = %s WHERE email = %s", (token, email))
+        mydb.commit()
+
+        return jsonify({
+            'message': 'Zalogowano przez Google',
+            'user': {
+                'id': user['id'],
+                'email': user['email'],
+                'nickName': user['nickName']
+            },
+            'token': token
+        }), 200
+    except ValueError:
+        return jsonify({'error': 'Nieprawidłowy token Google'}), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -273,55 +325,42 @@ def verify_token():
         print(f"Ogólny błąd: {e}")
         return jsonify({'error': 'Błąd serwera', 'details': str(e)}), 500
 
-
-# Częśc patrykowa do konta użytkownika
-@app.route('/get_user_by_token', methods=['POST'])
-def get_user_by_token():
+# Filipa syfn a pobieranie hasła
+@app.route('/get_password/<user_id>', methods=['GET'])
+def get_password(user_id):
     try:
-        # Pobranie danych z żądania
-        data = request.get_json()
-        token = data.get('token')
-
-        if not token:
-            return jsonify({"message": "Brak tokenu w żądaniu"}), 400
-
-        # Połączenie z bazą danych
         cursor = mydb.cursor(dictionary=True)
-
-        # Wykonanie zapytania SQL
-        query = "SELECT id, email, nickName, imie, nazwisko, is_verified, points FROM users WHERE token = %s"
-        cursor.execute(query, (token,))
+        sql = "SELECT password FROM users WHERE id = %s"
+        cursor.execute(sql, (user_id,))
         user = cursor.fetchone()
 
-        # Zamknięcie kursora
-        cursor.close()
-
-        # Sprawdzenie, czy użytkownik istnieje
         if not user:
-            return jsonify({"message": "Nie znaleziono użytkownika dla podanego tokenu"}), 404
+            return jsonify({'error': 'Nie znaleziono użytkownika o podanym ID'}), 404
 
-        # Zwrócenie danych użytkownika
-        return jsonify({"user": user}), 200
-
+        return jsonify({'password': user['password']}), 200
     except Exception as e:
-        print(f"Błąd podczas pobierania danych użytkownika: {e}")
-        return jsonify({"message": "Wystąpił błąd serwera"}), 500
+        return jsonify({'error': str(e)}), 500
+
+
+
 
 
 @app.route('/update_user/<user_id>', methods=['PUT'])
 def update_user(user_id):
-    data = request.json  # Dane z ciała żądania
+    data = request.json
     update_fields = []
+    values = []
 
-    # Budujemy zapytanie SQL na podstawie przesłanych pól
     for key, value in data.items():
+        if isinstance(value, list):
+            value = json.dumps(value)  # Zamień listę na JSON
         update_fields.append(f"{key} = %s")
+        values.append(value)
 
     sql_query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
-    values = list(data.values()) + [user_id]
+    values.append(user_id)
 
     try:
-        # Używamy już istniejącego połączenia mydb
         cursor = mydb.cursor()
         cursor.execute(sql_query, values)
         mydb.commit()
@@ -329,6 +368,7 @@ def update_user(user_id):
         return jsonify({'message': 'Dane użytkownika zaktualizowane pomyślnie'}), 200
     except mysql.connector.Error as err:
         return jsonify({'message': f'Błąd bazy danych: {err}'}), 500
+
 # ------------------- ZAPISYWANIE OBRAZU NA SERWER -------------------
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
@@ -345,6 +385,10 @@ def upload_image():
 
     return jsonify({'message': 'Plik zapisany', 'file_path': file_path}), 200
 
+
+
+
+    
 
 
 @app.route('/uploads/<filename>')
@@ -438,6 +482,7 @@ def delete_event(event_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/events/<event_id>/join', methods=['POST'])
 def join_event(event_id):
     try:
@@ -457,6 +502,12 @@ def join_event(event_id):
             return jsonify({'error': 'Nieprawidłowy token'}), 401
 
         user_id = user['id']
+
+        # Sprawdzenie, czy użytkownik jest zbanowany
+        sql_check_ban = "SELECT * FROM event_bans WHERE event_id = %s AND user_id = %s"
+        cursor.execute(sql_check_ban, (event_id, user_id))
+        if cursor.fetchone():
+            return jsonify({'error': 'Użytkownik jest zbanowany i nie może dołączyć do tego wydarzenia'}), 403
 
         # Sprawdzenie, czy użytkownik jest już zapisany na wydarzenie
         sql_check = "SELECT * FROM event_participants WHERE event_id = %s AND user_id = %s"
@@ -483,7 +534,92 @@ def join_event(event_id):
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
 
+# Częśc patrykowa do konta użytkownika
+@app.route('/get_user_by_token', methods=['POST'])
+def get_user_by_token():
+    try:
+        data = request.get_json()
+        token = data.get('token')
 
+        if not token:
+            return jsonify({"message": "Brak tokenu w żądaniu"}), 400
+
+        cursor = mydb.cursor(dictionary=True)
+        query = """
+            SELECT id, email, nickName, imie, nazwisko, is_verified, points, recent_searches 
+            FROM users WHERE token = %s
+        """
+        cursor.execute(query, (token,))
+        user = cursor.fetchone()
+        cursor.close()
+
+        if not user:
+            return jsonify({"message": "Nie znaleziono użytkownika dla podanego tokenu"}), 404
+
+        # Przekształcenie recent_searches z JSON na listę
+        if user.get("recent_searches"):
+            try:
+                user["recent_searches"] = json.loads(user["recent_searches"])
+            except:
+                user["recent_searches"] = []
+        else:
+            user["recent_searches"] = []
+
+        return jsonify({"user": user}), 200
+
+    except Exception as e:
+        print(f"Błąd podczas pobierania danych użytkownika: {e}")
+        return jsonify({"message": "Wystąpił błąd serwera"}), 500
+
+
+@app.route('/get_recent_searches', methods=['GET'])
+def get_recent_searches():
+    token = request.headers.get('Authorization')
+    if not token or not token.startswith("Bearer "):
+        return jsonify({'error': 'Brak tokenu'}), 401
+    token = token.split(" ")[1]
+
+    cursor = mydb.cursor(dictionary=True)
+    sql = "SELECT recent_searches FROM users WHERE token = %s"
+    cursor.execute(sql, (token,))
+    user = cursor.fetchone()
+    if not user:
+        return jsonify({'error': 'Nie znaleziono użytkownika'}), 404
+
+    try:
+        searches = json.loads(user['recent_searches']) if user['recent_searches'] else []
+        return jsonify({'recent_searches': searches}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/update_recent_searches', methods=['POST'])
+def update_recent_searches():
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+
+        token = token.split(" ")[1]
+        data = request.get_json()
+        recent_searches = data.get('recent_searches')
+
+        if not isinstance(recent_searches, list):
+            return jsonify({'error': 'recent_searches musi być listą'}), 400
+
+        cursor = mydb.cursor()
+        sql = "UPDATE users SET recent_searches = %s WHERE token = %s"
+        cursor.execute(sql, (json.dumps(recent_searches), token))
+        mydb.commit()
+        cursor.close()
+
+        return jsonify({'message': 'recentSearches zaktualizowane pomyślnie'}), 200
+
+    except Exception as e:
+        print(f"Błąd podczas aktualizacji recentSearches: {e}")
+        return jsonify({'error': str(e)}), 500
+
+    
 @app.route('/events/<event_id>/leave', methods=['POST'])
 def leave_event(event_id):
     try:
@@ -507,7 +643,7 @@ def leave_event(event_id):
         # Usuwanie użytkownika z wydarzenia
         sql_delete = "DELETE FROM event_participants WHERE event_id = %s AND user_id = %s"
         cursor.execute(sql_delete, (event_id, user_id))
-
+        
         # Aktualizacja liczby uczestników
         sql_update_participants = """
         UPDATE events
@@ -515,7 +651,7 @@ def leave_event(event_id):
         WHERE id = %s
         """
         cursor.execute(sql_update_participants, (event_id,))
-
+        
         mydb.commit()
 
         return jsonify({'message': 'Użytkownik został wypisany z wydarzenia'}), 200
@@ -553,7 +689,7 @@ def check_user_joined(event_id):
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Czy jest moderatorem danego wydarzenia
+# Czy jest moderatorem danego wydarzenia 
 @app.route('/events/<event_id>/is_admin', methods=['GET'])
 def is_admin(event_id):
     try:
@@ -588,6 +724,40 @@ def is_admin(event_id):
     except Exception as e:
         print(f"Błąd: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user_events', methods=['GET'])
+def get_user_events():
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+
+        token = token.split(" ")[1]
+        cursor = mydb.cursor(dictionary=True)
+
+        # Pobieranie user_id z tokenu
+        sql = "SELECT id FROM users WHERE token = %s"
+        cursor.execute(sql, (token,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+
+        # Pobieranie wydarzeń powiązanych z user_id
+        sql_events = "SELECT * FROM events WHERE user_id = %s"
+        cursor.execute(sql_events, (user_id,))
+        events = cursor.fetchall()
+
+        for event in events:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify(events), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/delete_account', methods=['DELETE'])
@@ -751,6 +921,77 @@ def set_user_event_preferences():
     mydb.commit()
     return jsonify({'message': 'Preferencje zaktualizowane'}), 200
 
+@app.route('/events/<event_id>/ban', methods=['POST'])
+def ban_user(event_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+
+        token = token.split(" ")[1]
+        cursor = mydb.cursor(dictionary=True)
+
+        # Pobieranie user_id z tokenu
+        sql_get_admin = "SELECT id FROM users WHERE token = %s"
+        cursor.execute(sql_get_admin, (token,))
+        admin_user = cursor.fetchone()
+
+        if not admin_user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        admin_id = admin_user['id']
+
+        # Sprawdzenie, czy użytkownik jest administratorem wydarzenia
+        sql_check_admin = "SELECT * FROM events WHERE id = %s AND user_id = %s"
+        cursor.execute(sql_check_admin, (event_id, admin_id))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Brak uprawnień do zarządzania wydarzeniem'}), 403
+
+        # Pobranie nickName użytkownika do zbanowania
+        data = request.get_json()
+        banned_nick = data.get('nickName')
+
+        if not banned_nick:
+            return jsonify({'error': 'Brak nickName w żądaniu'}), 400
+
+        # Zamiana nickName na user_id
+        sql_get_user_id = "SELECT id FROM users WHERE nickName = %s"
+        cursor.execute(sql_get_user_id, (banned_nick,))
+        banned_user = cursor.fetchone()
+
+        if not banned_user:
+            return jsonify({'error': 'Nie znaleziono użytkownika o takim nickName'}), 404
+
+        banned_user_id = banned_user['id']
+
+        # Sprawdzenie, czy użytkownik jest już zbanowany
+        sql_check_ban = "SELECT * FROM event_bans WHERE event_id = %s AND user_id = %s"
+        cursor.execute(sql_check_ban, (event_id, banned_user_id))
+        if cursor.fetchone():
+            return jsonify({'message': 'Użytkownik jest już zbanowany'}), 200
+
+        # Usunięcie użytkownika z wydarzenia (jeśli jest zapisany)
+        sql_remove_participant = "DELETE FROM event_participants WHERE event_id = %s AND user_id = %s"
+        cursor.execute(sql_remove_participant, (event_id, banned_user_id))
+
+        # Zaktualizowanie kolumny registered_participants w tabeli events
+        sql_update_participants = """
+            UPDATE events
+            SET registered_participants = registered_participants - 1
+            WHERE id = %s
+        """
+        cursor.execute(sql_update_participants, (event_id,))
+
+        # Dodanie użytkownika do listy zbanowanych
+        sql_ban_user = "INSERT INTO event_bans (event_id, user_id) VALUES (%s, %s)"
+        cursor.execute(sql_ban_user, (event_id, banned_user_id))
+        mydb.commit()
+
+
+        return jsonify({'message': 'Użytkownik został zbanowany i usunięty z wydarzenia'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/events/<int:user_id>', methods=['GET'])
 def get_users_events(user_id):
     try:
@@ -766,38 +1007,44 @@ def get_users_events(user_id):
         return jsonify(events), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-@app.route('/report_event', methods=['POST'])
-def report_event():
-    try:
-        data = request.get_json()
-        event_id = data['event_id']
-        reason = data['reason']
 
+@app.route('/joined_events', methods=['GET'])
+def get_joined_events():
+    try:
         token = request.headers.get('Authorization')
         if not token or not token.startswith("Bearer "):
-            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
-        token = token.split(" ")[1]
+            return jsonify({'error': 'Brak tokenu'}), 401
 
+        token = token.split(" ")[1]
         cursor = mydb.cursor(dictionary=True)
+
         cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
         user = cursor.fetchone()
         if not user:
             return jsonify({'error': 'Nieprawidłowy token'}), 401
 
         user_id = user['id']
-        cursor.execute("INSERT INTO event_reports (event_id, reason, user_id) VALUES (%s, %s, %s)", (event_id, reason, user_id))
-        mydb.commit()
-        return jsonify({'message': 'Zgłoszenie zostało zapisane'}), 201
 
+        sql = """
+        SELECT e.* FROM events e
+        JOIN event_participants ep ON e.id = ep.event_id
+        WHERE ep.user_id = %s AND e.user_id != %s
+        """
+        cursor.execute(sql, (user_id, user_id))
+
+        events = cursor.fetchall()
+
+        for event in events:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify(events), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
+    
 
 if __name__ == '__main__':
-    # ip = get_local_ip()
-    # app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
-    #                  '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
-
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    ip = get_local_ip()
+    app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
+                     '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)

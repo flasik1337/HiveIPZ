@@ -14,6 +14,8 @@ import 'models/event.dart';
 // Inicjalizacja listy eventów, na której działa cała aplikacja
 List<Event> initialEvents = [];
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -47,6 +49,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false, // Wyłączenie debugowego banera
       title: 'Hive',
       theme: ThemeData(
