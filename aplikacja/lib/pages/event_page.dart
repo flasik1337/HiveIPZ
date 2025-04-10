@@ -49,13 +49,16 @@ class _EventPageState extends State<EventPage> {
   bool isUserJoined = false; // Czy użytkownik jest zapisany na wydarzenie
   bool isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
   String? userId; // Przechowywanie userId
+  double? organizerRating;
+  bool ratingSent = false;
 
   @override
   void initState() {
     super.initState();
     currentEvent = widget.event;
     _fetchEvent();
-    _initializeUser(); // Inicjalizacja użytkownika
+    _initializeUser();
+    _loadRating();
   }
 
   void _addToGoogleCalendar() {
@@ -74,20 +77,158 @@ class _EventPageState extends State<EventPage> {
 }
 
 
+String? _selectedReason;
+final List<String> _reportReasons = [
+  'Nieodpowiednia treść',
+  'Fałszywe wydarzenie',
+  'Spam',
+  'Inny powód'
+];
+
+void _showReportDialog() async {
+  String? selectedReason;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: MediaQuery.of(context).viewInsets.add(const EdgeInsets.all(16.0)),
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Zgłoś wydarzenie', style: TextStyle(fontSize: 18)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'Wybierz powód'),
+                  items: _reportReasons.map((reason) {
+                    return DropdownMenuItem<String>(
+                      value: reason,
+                      child: Text(reason),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedReason = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: selectedReason == null ? null : () async {
+                    try {
+                      await DatabaseHelper.reportEvent(currentEvent.id, selectedReason!);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Zgłoszenie wysłane')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Błąd: ${e.toString()}')),
+                      );
+                    }
+                  },
+                  child: const Text('Wyślij zgłoszenie'),
+                )
+              ],
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+
+  void _showRatingDialog() {
+    showDialog(
+      context: context,
+        builder: (context) {
+          int selectedRating = 3;
+
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return AlertDialog(
+                title: Text('Oceń organizatora'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Jak oceniasz to wydarzenie?'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < selectedRating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                          ),
+                          onPressed: () {
+                            setStateDialog(() {
+                              selectedRating = index + 1;
+                            });
+                          },
+                        );
+                      }),
+                    )
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      await DatabaseHelper.rateOrganizer(currentEvent.userId.toString(), selectedRating);
+                      if (!mounted) return;
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dziękujemy za ocenę!')));
+                      setState(() {
+                        ratingSent = true;
+                      });
+                      _loadRating();
+                    },
+                    child: Text('Zatwierdź'),
+                  )
+                ],
+              );
+            },
+          );
+        }
+    );
+  }
+
+
+
   Future<void> _initializeUser() async {
     try {
       userId = await DatabaseHelper.getUserIdFromToken();
-      _checkUserJoinedStatus();
-      _checkIfUserIsOwner();
+      await _checkUserJoinedStatus();
+      await _checkIfUserIsOwner();
+
+      final hasRated = await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
+
+      if (currentEvent.startDate.isBefore(DateTime.now()) &&
+          isUserJoined &&
+          !isUserOwner &&
+          !hasRated) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showRatingDialog();
+        });
+      }
+
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
   }
 
+
   Future<void> _fetchEvent() async {
     try {
       final eventData = await DatabaseHelper.getEvent(widget.event.id);
       if (eventData != null) {
+        if (!mounted) return;
         setState(() {
           currentEvent = Event.fromJson(eventData);
         });
@@ -99,62 +240,94 @@ class _EventPageState extends State<EventPage> {
 
   void _showParticipantsModal(BuildContext context) async {
     List<String> participants = await DatabaseHelper.getEventParticipants(currentEvent.id);
+    List<String> bannedUsers = await DatabaseHelper.getBannedUsers(currentEvent.id);
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(16),
-          height: 300,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Lista uczestników',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            Future<void> refreshLists() async {
+              final updatedParticipants = await DatabaseHelper.getEventParticipants(currentEvent.id);
+              final updatedBanned = await DatabaseHelper.getBannedUsers(currentEvent.id);
+              setModalState(() {
+                participants = updatedParticipants;
+                bannedUsers = updatedBanned;
+              });
+            }
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              height: 500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Uczestnicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: participants.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: const Icon(Icons.person),
+                          title: Text(participants[index]),
+                          trailing: isUserOwner
+                              ? IconButton(
+                            icon: const Icon(Icons.block, color: Colors.red),
+                            onPressed: () async {
+                              await DatabaseHelper.banUser(currentEvent.id, participants[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Użytkownik został zbanowany')),
+                              );
+                              await refreshLists();
+                            },
+                          )
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Zbanowani użytkownicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: bannedUsers.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: const Icon(Icons.person_off, color: Colors.red),
+                          title: Text(bannedUsers[index]),
+                          trailing: isUserOwner
+                              ? IconButton(
+                            icon: const Icon(Icons.undo, color: Colors.green),
+                            onPressed: () async {
+                              await DatabaseHelper.unbanUser(currentEvent.id, bannedUsers[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Użytkownik został odbanowany')),
+                              );
+                              await refreshLists();
+                            },
+                          )
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-              const Divider(),
-              Expanded(
-                child: participants.isEmpty
-                    ? const Center(child: Text('Brak uczestników'))
-                    : ListView.builder(
-                  itemCount: participants.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      leading: const Icon(Icons.person),
-                      title: Text(participants[index]),
-                      trailing: isUserOwner
-                          ? IconButton(
-                        icon: Icon(Icons.block, color: Colors.red),
-                        onPressed: () async {
-                          try {
-                            await DatabaseHelper.banUser(
-                                currentEvent.id, participants[index]);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Użytkownik zbanowany')),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Błąd: $e')),
-                            );
-                          }
-                        },
-                      )
-                          : null,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
 
-  void _checkIfUserIsOwner() {
+
+  Future<void> _checkIfUserIsOwner() async{
     if (userId != null) {
+      if (!mounted) return;
       setState(() {
         isUserOwner = currentEvent.userId == int.tryParse(userId!);
       });
@@ -169,6 +342,7 @@ class _EventPageState extends State<EventPage> {
         final isJoined = await DatabaseHelper.isUserJoinedEvent(
             currentEvent.id, userId!);
 
+        if (!mounted) return;
         setState(() {
           isUserJoined = isJoined;
         });
@@ -183,6 +357,7 @@ class _EventPageState extends State<EventPage> {
       if (isUserJoined) {
         // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
+        if (!mounted) return;
         setState(() {
           isUserJoined = false;
           currentEvent = currentEvent.copyWith(
@@ -213,6 +388,7 @@ class _EventPageState extends State<EventPage> {
 
         // Zapisz użytkownika na wydarzenie
         await DatabaseHelper.joinEvent(currentEvent.id);
+        if (!mounted) return;
         setState(() {
           isUserJoined = true;
           currentEvent = currentEvent.copyWith(
@@ -224,6 +400,19 @@ class _EventPageState extends State<EventPage> {
       print('Błąd podczas zapisu/wypisu: $e');
     }
   }
+
+  void _loadRating() async {
+    try {
+      final rating = await DatabaseHelper.getOrganizerRating(currentEvent.userId.toString());
+      if (!mounted) return;
+      setState(() {
+        organizerRating = rating;
+      });
+    } catch (e) {
+      print("Błąd ładowania oceny: $e");
+    }
+  }
+
 
   // Wyświetlenie okna z komentarzami
   void _showCommentsModal(BuildContext context) {
@@ -270,8 +459,42 @@ class _EventPageState extends State<EventPage> {
                   style: HiveTextStyles.title,
                 ),
               ),
+
+              Positioned(
+                top: 16,
+                right: 16,
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  onSelected: (value) {
+                    if (value == 'report') {
+                      _showReportDialog();
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'report',
+                      child: ListTile(
+                        leading: Icon(Icons.report_gmailerrorred, color: Colors.red),
+                        title: Text('Zgłoś wydarzenie'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (organizerRating != null)
+                Positioned(
+                  bottom: 0,
+                  left: 16,
+                  child: Text(
+                    'Ocena organizatora: ⭐ ${organizerRating!.toStringAsFixed(1)} / 5',
+                    style: const TextStyle(fontSize: 14, color: Colors.white),
+                  ),
+                ),
+
             ],
           ),
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -332,6 +555,7 @@ class _EventPageState extends State<EventPage> {
                         builder: (context) => EditEventPage(
                           event: currentEvent,
                           onSave: (updatedEvent) {
+                            if (!mounted) return;
                             setState(() {
                               currentEvent = updatedEvent;
                             });
@@ -361,6 +585,7 @@ class _EventPageState extends State<EventPage> {
                           'is_promoted': updated.isPromoted,
                         },
                       );
+                      if (!mounted) return;
                       setState(() {
                         currentEvent = updated;
                       });
@@ -389,7 +614,7 @@ class _EventPageState extends State<EventPage> {
                 child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
               ),
             ),
-             
+
         ],
       ),
     );
