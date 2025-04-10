@@ -16,6 +16,7 @@ class Event {
   final int? userId;
   final double cena;
   final bool isPromoted;
+  final double recommendationScore;
 
   const Event({
     required this.id,
@@ -30,6 +31,7 @@ class Event {
     this.userId,
     required this.cena,
     required this.isPromoted,
+    this.recommendationScore = 0.0,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class Event {
     int? userId,
     double? cena,
     bool? isPromoted,
+    double? recommendationScore,
   }) {
     return Event(
       id: id ?? this.id,
@@ -80,6 +83,7 @@ class Event {
       userId: userId ?? this.userId,
       cena: cena ?? this.cena,
       isPromoted: isPromoted ?? this.isPromoted,
+      recommendationScore: recommendationScore ?? this.recommendationScore,
     );
   }
 
