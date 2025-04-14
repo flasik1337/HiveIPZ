@@ -141,29 +141,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void sortEventsByPrice(bool ascending) {
-    setState(() {
-      events.sort((a, b) =>
-          ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
-    });
-  }
-
-  void sortEventsByParticipants(bool ascending) {
-    setState(() {
-      events.sort((a, b) => ascending
-          ? a.registeredParticipants.compareTo(b.registeredParticipants)
-          : b.registeredParticipants.compareTo(a.registeredParticipants));
-    });
-  }
-
-  void sortEventsByDate(bool ascending) {
-    setState(() {
-      events.sort((a, b) => ascending
-          ? a.startDate.compareTo(b.startDate)
-          : b.startDate.compareTo(a.startDate));
-    });
-  }
-
   void _toggleSearch() {
     setState(() {
       isSearching = !isSearching;
