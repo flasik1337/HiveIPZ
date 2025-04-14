@@ -17,8 +17,6 @@ import 'dart:convert';
 
 import '../widgets/sorting_modal_bottom_sheet.dart';
 
-
-
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
   final List<Event> events;
@@ -54,7 +52,6 @@ class _HomePageState extends State<HomePage> {
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
     _pageController = PageController();
-
   }
 
   void _rateEvent(String eventId, bool isLike) async {
@@ -64,7 +61,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rate');
+    final url =
+        Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rate');
 
     try {
       final response = await http.post(
@@ -87,7 +85,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   Future<void> _fetchUserRating(String eventId) async {
     final token = await DatabaseHelper.getToken();
     if (token == null) {
@@ -95,7 +92,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rating_status');
+    final url = Uri.parse(
+        'https://vps.jakosinski.pl:5000/events/$eventId/rating_status');
 
     try {
       final response = await http.get(
@@ -106,16 +104,14 @@ class _HomePageState extends State<HomePage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          userRatings[eventId] = data['rating']; // 'like' lub 'dislike' lub null
+          userRatings[eventId] =
+              data['rating']; // 'like' lub 'dislike' lub null
         });
       }
     } catch (e) {
       print('Błąd pobierania oceny: $e');
     }
   }
-
-
-
 
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
@@ -177,7 +173,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-
   /// Obsługa NavigationBara na dole ekranu
   /// args:
   ///   int index: wybrany przycisk
@@ -218,7 +213,8 @@ class _HomePageState extends State<HomePage> {
           break;
         case 3:
           // Filtrowanie
-          EventFilterService.showFilterModalBottomSheet(context: context, events: events);
+          EventFilterService.showFilterModalBottomSheet(
+              context: context, events: events);
           break;
         case 4:
           // Profil użytkownika
@@ -243,29 +239,29 @@ class _HomePageState extends State<HomePage> {
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                   onRefresh: _fetchAllEvents,
-            child: PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              itemCount: events.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-                _fetchUserRating(events[index].id);
-              },
-              itemBuilder: (context, index) {
-                final event = events[index];
-                return EventCard(
-                  event: event,
-                  onUpdate: (updatedEvent) {
-                    setState(() {
-                      events[index] = updatedEvent;
-                    });
-                  },
-                );
-              },
-            ),
-          ),
+                  child: PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    itemCount: events.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                      _fetchUserRating(events[index].id);
+                    },
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(
+                        event: event,
+                        onUpdate: (updatedEvent) {
+                          setState(() {
+                            events[index] = updatedEvent;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
 
           AnimatedOpacity(
               opacity: isSearching ? 1.0 : 0.0,
@@ -403,33 +399,42 @@ class _HomePageState extends State<HomePage> {
                                     sortingAscending = asc;
                                   });
                                 },
-                                refresh: () => setState(() {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
+                                refresh: () => setState(
+                                    () {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
                               ),
                             );
-
                           },
                         ),
                         if (events.isNotEmpty)
                           ListTile(
                             leading: Icon(
-                              Icons.thumb_up_alt_outlined,
+                              Icons.thumb_down_alt_outlined,
                               size: 35,
-                              color: userRatings[events[_currentPage].id] == 'like'
-                                  ? Colors.green
+                              color: userRatings[events[_currentPage].id] ==
+                                      'dislike'
+                                  ? Colors.red
                                   : Colors.white,
                             ),
-                            onTap: () => _rateEvent(events[_currentPage].id, true),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, false),
+                          ),
+                        if (events.isNotEmpty)
+                          Text(
+                            events[_currentPage].userScore.toString(),
+                            style: TextStyle(color: HiveColors.main),
                           ),
                         if (events.isNotEmpty)
                           ListTile(
                             leading: Icon(
-                              Icons.thumb_down_alt_outlined,
+                              Icons.thumb_up_alt_outlined,
                               size: 35,
-                              color: userRatings[events[_currentPage].id] == 'dislike'
-                                  ? Colors.red
-                                  : Colors.white,
+                              color:
+                                  userRatings[events[_currentPage].id] == 'like'
+                                      ? Colors.green
+                                      : Colors.white,
                             ),
-                            onTap: () => _rateEvent(events[_currentPage].id, false),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, true),
                           ),
                       ],
                     ),

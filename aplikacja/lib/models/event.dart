@@ -17,6 +17,7 @@ class Event {
   final double cena;
   final bool isPromoted;
   final double recommendationScore;
+  final int userScore;
 
   const Event({
     required this.id,
@@ -32,6 +33,7 @@ class Event {
     required this.cena,
     required this.isPromoted,
     this.recommendationScore = 0.0,
+    this.userScore = 0,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -50,7 +52,7 @@ class Event {
           ? double.tryParse(json['cena'].toString()) ?? 0.0
           : 0.0,
       isPromoted: json['is_promoted'] == 1 || json['is_promoted'] == true,
-
+      userScore: json['score'] as int,
     );
   }
 
@@ -68,6 +70,7 @@ class Event {
     double? cena,
     bool? isPromoted,
     double? recommendationScore,
+    int? userScore,
   }) {
     return Event(
       id: id ?? this.id,
@@ -84,6 +87,7 @@ class Event {
       cena: cena ?? this.cena,
       isPromoted: isPromoted ?? this.isPromoted,
       recommendationScore: recommendationScore ?? this.recommendationScore,
+      userScore: userScore ?? this.userScore,
     );
   }
 

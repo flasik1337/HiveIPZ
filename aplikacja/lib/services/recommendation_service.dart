@@ -68,8 +68,7 @@ class RecommendationService {
 
     // +stosunek like do dislike
     // FIXME DAJ TUTAJ PRAWIDŁOWE NAZWY ZMIMENNYCH; być może będziesz musiał parsować na double obie
-    // int divider = event.thumbsDown == 0 ? 1 : evnt.thumbsDown;
-    // score += event.thumbsUp / event.thumbsDown;
+    score += event.userScore;
 
     return score;
   }
