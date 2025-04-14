@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../widgets/rating_panel.dart';
+
 
 
 
@@ -37,7 +39,7 @@ class _HomePageState extends State<HomePage> {
   double searchBarWidth = 56;
   PageController _pageController = PageController();
   int _currentPage = 0;
-  Map<String, String?> userRatings = {}; // eventId -> 'like' lub 'dislike'
+  Map<String, Map<String, dynamic>> userRatings = {}; // eventId -> 'like' lub 'dislike'
   final FocusNode _searchFocusNode = FocusNode();
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
@@ -103,8 +105,12 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        if (!mounted) return;
         setState(() {
-          userRatings[eventId] = data['rating']; // 'like' lub 'dislike' lub null
+          userRatings[eventId] = {
+            'rating': data['rating'], // like / dislike / null
+            'score': data['score'],   // liczba punktów
+          };
         });
       }
     } catch (e) {
@@ -115,10 +121,12 @@ class _HomePageState extends State<HomePage> {
 
 
 
+
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
     try {
       final eventsData = await DatabaseHelper.getAllEvents();
+      if (!mounted) return;
       setState(() {
         events = eventsData.map((data) => Event.fromJson(data)).toList();
         events.sort((a, b) {
@@ -135,6 +143,7 @@ class _HomePageState extends State<HomePage> {
   // pobierz poprzednie wyszukiwania (zapis do konta użytkownika np. 5 ostatnich?)
   Future<void> _loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       recentSearches =
           prefs.getStringList('recentSearches') ?? ['zut', 'pudzian', 'rabbit'];
@@ -142,6 +151,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _toggleSearch() {
+    if (!mounted) return;
     setState(() {
       isSearching = !isSearching;
       searchBarWidth =
@@ -162,6 +172,7 @@ class _HomePageState extends State<HomePage> {
 
     // Dodaj do recentSearches jeśli nie ma
     if (!recentSearches.contains(query)) {
+      if (!mounted) return;
       setState(() {
         recentSearches.insert(0, query);
         if (recentSearches.length > 5) recentSearches.removeLast();
@@ -169,7 +180,7 @@ class _HomePageState extends State<HomePage> {
       final prefs = await SharedPreferences.getInstance();
       prefs.setStringList('recentSearches', recentSearches);
     }
-
+    if (!mounted) return;
     setState(() {
       isSearching = false;
     });
@@ -180,6 +191,7 @@ class _HomePageState extends State<HomePage> {
   /// args:
   ///   int index: wybrany przycisk
   void _onBarTapped(int index) {
+    if (!mounted) return;
     setState(() {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
@@ -207,6 +219,7 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
+                if (!mounted) return;
                 setState(() {
                   events.add(newEvent);
                 });
@@ -246,6 +259,7 @@ class _HomePageState extends State<HomePage> {
               scrollDirection: Axis.vertical,
               itemCount: events.length,
               onPageChanged: (index) {
+                if (!mounted) return;
                 setState(() {
                   _currentPage = index;
                 });
@@ -256,6 +270,7 @@ class _HomePageState extends State<HomePage> {
                 return EventCard(
                   event: event,
                   onUpdate: (updatedEvent) {
+                    if (!mounted) return;
                     setState(() {
                       events[index] = updatedEvent;
                     });
@@ -396,6 +411,7 @@ class _HomePageState extends State<HomePage> {
                               selectedSortingType: selectedSortingType,
                               sortingAscending: sortingAscending,
                               onSortingChanged: (type, ascending) {
+                                if (!mounted) return;
                                 setState(() {
                                   selectedSortingType = type;
                                   sortingAscending = ascending;
@@ -405,26 +421,10 @@ class _HomePageState extends State<HomePage> {
                           },
                         ),
                         if (events.isNotEmpty)
-                          ListTile(
-                            leading: Icon(
-                              Icons.thumb_up_alt_outlined,
-                              size: 35,
-                              color: userRatings[events[_currentPage].id] == 'like'
-                                  ? Colors.green
-                                  : Colors.white,
-                            ),
-                            onTap: () => _rateEvent(events[_currentPage].id, true),
-                          ),
-                        if (events.isNotEmpty)
-                          ListTile(
-                            leading: Icon(
-                              Icons.thumb_down_alt_outlined,
-                              size: 35,
-                              color: userRatings[events[_currentPage].id] == 'dislike'
-                                  ? Colors.red
-                                  : Colors.white,
-                            ),
-                            onTap: () => _rateEvent(events[_currentPage].id, false),
+                          RatingPanel(
+                            event: events[_currentPage],
+                            userRating: userRatings[events[_currentPage].id],
+                            onRate: (isLike) => _rateEvent(events[_currentPage].id, isLike),
                           ),
                       ],
                     ),
