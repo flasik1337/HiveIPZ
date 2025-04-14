@@ -19,6 +19,11 @@ class EventSorterService {
         : b.startDate.compareTo(a.startDate));
   }
 
+  static void sortByRecommendations(List<Event> events) {
+    events
+        .sort((a, b) => a.recommendationScore.compareTo(b.recommendationScore));
+  }
+
   static void showSortingModalBottomSheet({
     required BuildContext context,
     required List<Event> events,
@@ -50,7 +55,7 @@ class EventSorterService {
                       setModalState(() {
                         onSortingChanged(0, true);
                       });
-                      Navigator.pop(context);
+                      sortByRecommendations(events);
                       refresh();
                     },
                   ),
@@ -71,7 +76,6 @@ class EventSorterService {
                         onSortingChanged(1, newAscending);
                       });
                       sortByPrice(events, newAscending);
-                      Navigator.pop(context);
                       refresh();
                     },
                   ),
@@ -92,7 +96,6 @@ class EventSorterService {
                         onSortingChanged(2, newAscending);
                       });
                       sortByParticipants(events, newAscending);
-                      Navigator.pop(context);
                       refresh();
                     },
                   ),
@@ -113,7 +116,6 @@ class EventSorterService {
                         onSortingChanged(3, newAscending);
                       });
                       sortByDate(events, newAscending);
-                      Navigator.pop(context);
                       refresh();
                     },
                   ),
