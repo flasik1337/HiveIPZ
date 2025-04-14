@@ -95,6 +95,25 @@ class DatabaseHelper {
     }
   }
 
+  static Future<void> loginWithFacebook(String email, String name) async {
+    final url = Uri.parse('$link/facebook_login');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'name': name,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data; // Zwraca user + token
+    } else {
+      final error = jsonDecode(response.body)['message'] ?? 'Nieznany błąd';
+      throw Exception(error);
+    }
+  }
   static Future<void> verifyToken(String token) async {
     final url = Uri.parse(
         '$link/verify_token'); // Zakładając, że endpoint to '/verify_token'
