@@ -374,8 +374,8 @@ class _HomePageState extends State<HomePage> {
           ),
 
           Positioned(
-              top: MediaQuery.of(context).size.height - 290,
-              left: MediaQuery.of(context).size.width - 85,
+              top: MediaQuery.of(context).size.height - 305,
+              left: MediaQuery.of(context).size.width - 80,
               child: Row(
                 children: [
                   Container(
@@ -419,9 +419,15 @@ class _HomePageState extends State<HomePage> {
                                 _rateEvent(events[_currentPage].id, false),
                           ),
                         if (events.isNotEmpty)
-                          Text(
-                            events[_currentPage].userScore.toString(),
-                            style: TextStyle(color: HiveColors.main),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(0, 0, 17, 0),
+                            child: Text(
+                              events[_currentPage].userScore.toString(),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                            ),
                           ),
                         if (events.isNotEmpty)
                           ListTile(
