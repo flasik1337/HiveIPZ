@@ -44,6 +44,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   add_2_calendar: ^2.1.0
   google_sign_in: ^6.3.0  # google logowanie
+  intl: ^0.18.1 # data do komentarzy
+
 
 
 dev_dependencies:

@@ -203,7 +203,7 @@ class DatabaseHelper {
   }
 
   static Future<bool> hasUserRated(String organizerId) async {
-    final token = await _getToken();
+    final token = await getToken();
     final url = Uri.parse('$link/has_rated/$organizerId');
     final response = await http.get(
       url,
@@ -275,14 +275,14 @@ class DatabaseHelper {
     }
   }
 
-  static Future<String?> _getToken() async {
+  static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(
         'token'); // Zakładam, że token jest przechowywany pod kluczem 'token'
   }
 
   static Future<void> joinEvent(String eventId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -303,7 +303,7 @@ class DatabaseHelper {
   }
 
   static Future<void> leaveEvent(String eventId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -326,7 +326,7 @@ class DatabaseHelper {
   }
 
   static Future<String> getUserIdFromToken() async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -351,7 +351,7 @@ class DatabaseHelper {
 
   // Sprawdzanie czy user już się zapisał na wydazenie
   static Future<bool> isUserJoinedEvent(String eventId, String userId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji.');
     }
@@ -373,7 +373,7 @@ class DatabaseHelper {
 
   // Sprawdzamy czy user jest adminem wydarzenia
   static Future<bool> isAdmin(String eventId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji.');
     }
@@ -514,7 +514,7 @@ class DatabaseHelper {
   }
 
   static Future<void> banUser(String eventId, String nickName) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji.');
     }
@@ -555,7 +555,7 @@ class DatabaseHelper {
 
   static Future<String?> getUserNickname() async {
     try {
-      final token = await _getToken();
+      final token = await getToken();
       if (token == null) {
         throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
       }
@@ -574,7 +574,7 @@ class DatabaseHelper {
 
   // Pobieranie komentarzy dla wydarzenia
   static Future<List<Map<String, dynamic>>> getEventComments(String eventId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -596,7 +596,7 @@ class DatabaseHelper {
 
   // Dodawanie komentarza do wydarzenia
   static Future<void> addEventComment(String eventId, String text) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -619,7 +619,7 @@ class DatabaseHelper {
 
   // Usuwanie komentarza do wydarzenia (dla moderatorów lub autora komentarza)
   static Future<void> deleteEventComment(String eventId, String commentId) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -638,7 +638,7 @@ class DatabaseHelper {
   
   // Zgłaszanie komentarza moderatorom
   static Future<void> reportComment(String eventId, String commentId, String reason) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
     }
@@ -674,7 +674,7 @@ class DatabaseHelper {
 
 
   static Future<void> unbanUser(String eventId, String nickName) async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) throw Exception('Brak tokenu sesji.');
 
     final url = Uri.parse('$link/events/$eventId/unban');
@@ -695,7 +695,7 @@ class DatabaseHelper {
 
 
   static Future<void> reportEvent(String eventId, String reason) async {
-  final token = await _getToken();
+  final token = await getToken();
   if (token == null) throw Exception('Brak tokenu');
 
   final response = await http.post(
@@ -730,7 +730,7 @@ class DatabaseHelper {
 
 
   static Future<void> rateOrganizer(String organizerId, int rating) async {
-    final token = await _getToken();
+    final token = await getToken();
     final url = Uri.parse('$link/rate_organizer');
     final response = await http.post(
       url,
