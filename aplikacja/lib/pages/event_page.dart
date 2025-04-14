@@ -208,15 +208,11 @@ void _showReportDialog() async {
       await _checkIfUserIsOwner();
 
       final hasRated = await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
+      setState(() {
+        ratingSent = hasRated;
+      });
 
-      if (currentEvent.startDate.isBefore(DateTime.now()) &&
-          isUserJoined &&
-          !isUserOwner &&
-          !hasRated) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showRatingDialog();
-        });
-      }
+
 
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
@@ -539,8 +535,34 @@ void _showReportDialog() async {
               onPressed: _addToGoogleCalendar,
             ),
           ),
-
-
+          if (currentEvent.startDate.isBefore(DateTime.now()) &&
+              isUserJoined &&
+              !isUserOwner)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ElevatedButton.icon(
+                icon: Icon(
+                  Icons.star,
+                  color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
+                ),
+                label: Text(
+                  ratingSent ? 'Dziękujemy za ocenę!' : 'Oceń organizatora',
+                  style: TextStyle(
+                    color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
+                  ),
+                ),
+                onPressed: ratingSent ? null : _showRatingDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFC300),
+                  disabledBackgroundColor: const Color(0xFFFFC300), // zachowaj żółty nawet jak disabled
+                  disabledForegroundColor: Colors.black.withOpacity(0.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
             Padding(
