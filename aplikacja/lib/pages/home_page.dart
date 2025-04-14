@@ -15,6 +15,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../widgets/sorting_modal_bottom_sheet.dart';
+
 
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
@@ -389,19 +391,22 @@ class _HomePageState extends State<HomePage> {
                           leading: Icon(Icons.import_export,
                               size: 35, color: Colors.white),
                           onTap: () {
-                            EventSorterService.showSortingModalBottomSheet(
+                            showModalBottomSheet(
                               context: context,
-                              events: events,
-                              refresh: () => setState(() {}),
-                              selectedSortingType: selectedSortingType,
-                              sortingAscending: sortingAscending,
-                              onSortingChanged: (type, ascending) {
-                                setState(() {
-                                  selectedSortingType = type;
-                                  sortingAscending = ascending;
-                                });
-                              },
+                              builder: (_) => SortingModalBottomSheet(
+                                events: events,
+                                selectedSortingType: selectedSortingType,
+                                sortingAscending: sortingAscending,
+                                onSortingChanged: (type, asc) {
+                                  setState(() {
+                                    selectedSortingType = type;
+                                    sortingAscending = asc;
+                                  });
+                                },
+                                refresh: () => setState(() {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
+                              ),
                             );
+
                           },
                         ),
                         if (events.isNotEmpty)
