@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
   // 'http://212.127.78.92:5000';
-  static const String link = 'https://vps.jakosinski.pl:5000';
+  static const String link = 'http://192.168.56.1:5000';
 
   static Future<void> addUser(
     String name,
@@ -78,9 +78,9 @@ class DatabaseHelper {
   static Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
     final url = Uri.parse('$link/google_login');
     final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id_token': idToken}),
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'id_token': idToken}),
     );
 
     if (response.statusCode == 200) {
@@ -114,6 +114,7 @@ class DatabaseHelper {
       throw Exception(error);
     }
   }
+
   static Future<void> verifyToken(String token) async {
     final url = Uri.parse(
         '$link/verify_token'); // Zakładając, że endpoint to '/verify_token'
@@ -236,7 +237,6 @@ class DatabaseHelper {
       throw Exception('Nie udało się sprawdzić czy użytkownik ocenił');
     }
   }
-
 
   //Pobieranie wszystkich wydarzeń
   static Future<List<Map<String, dynamic>>> getAllEvents() async {
@@ -549,7 +549,8 @@ class DatabaseHelper {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'nickName': nickName}),  // <-- Wysyłamy nick zamiast user_id
+      body: jsonEncode(
+          {'nickName': nickName}), // <-- Wysyłamy nick zamiast user_id
     );
 
     if (response.statusCode == 200) {
@@ -559,7 +560,6 @@ class DatabaseHelper {
       throw Exception('Błąd przy banowaniu użytkownika: $error');
     }
   }
-
 
   static Future<void> updateUserEventPreferences(
       String userId, List<String> selectedTypes) async {
@@ -582,7 +582,7 @@ class DatabaseHelper {
       if (token == null) {
         throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
       }
-      
+
       // Pobierz dane użytkownika na podstawie tokenu
       final userData = await getUserByToken(token);
       if (userData != null && userData.containsKey('nickName')) {
@@ -596,7 +596,8 @@ class DatabaseHelper {
   }
 
   // Pobieranie komentarzy dla wydarzenia
-  static Future<List<Map<String, dynamic>>> getEventComments(String eventId) async {
+  static Future<List<Map<String, dynamic>>> getEventComments(
+      String eventId) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -641,7 +642,8 @@ class DatabaseHelper {
   }
 
   // Usuwanie komentarza do wydarzenia (dla moderatorów lub autora komentarza)
-  static Future<void> deleteEventComment(String eventId, String commentId) async {
+  static Future<void> deleteEventComment(
+      String eventId, String commentId) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -658,9 +660,10 @@ class DatabaseHelper {
       throw Exception('Błąd podczas usuwania komentarza: $error');
     }
   }
-  
+
   // Zgłaszanie komentarza moderatorom
-  static Future<void> reportComment(String eventId, String commentId, String reason) async {
+  static Future<void> reportComment(
+      String eventId, String commentId, String reason) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -695,7 +698,6 @@ class DatabaseHelper {
     }
   }
 
-
   static Future<void> unbanUser(String eventId, String nickName) async {
     final token = await getToken();
     if (token == null) throw Exception('Brak tokenu sesji.');
@@ -716,28 +718,24 @@ class DatabaseHelper {
     }
   }
 
-
   static Future<void> reportEvent(String eventId, String reason) async {
-  final token = await getToken();
-  if (token == null) throw Exception('Brak tokenu');
+    final token = await getToken();
+    if (token == null) throw Exception('Brak tokenu');
 
-  final response = await http.post(
-    Uri.parse('$link/report_event'),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
-    },
-    body: jsonEncode({
-      'event_id': eventId,
-      'reason': reason
-    }),
-  );
+    final response = await http.post(
+      Uri.parse('$link/report_event'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
+      body: jsonEncode({'event_id': eventId, 'reason': reason}),
+    );
 
-  if (response.statusCode != 201) {
-    throw Exception(jsonDecode(response.body)['error'] ?? 'Nie udało się zgłosić wydarzenia');
+    if (response.statusCode != 201) {
+      throw Exception(jsonDecode(response.body)['error'] ??
+          'Nie udało się zgłosić wydarzenia');
+    }
   }
-}
-
 
   static Future<double> getOrganizerRating(String organizerId) async {
     try {
@@ -750,7 +748,8 @@ class DatabaseHelper {
         if (ratingValue == null) return 0.0;
         return double.tryParse(ratingValue.toString()) ?? 0.0;
       } else {
-        print('Błąd pobierania oceny organizatora: ${response.statusCode} - ${response.body}');
+        print(
+            'Błąd pobierania oceny organizatora: ${response.statusCode} - ${response.body}');
         return 0.0; // Zwracamy 0 zamiast rzucania wyjątku
       }
     } catch (e) {
@@ -758,8 +757,6 @@ class DatabaseHelper {
       return 0.0; // Zwracamy 0 w przypadku błędu zamiast rzucania wyjątku
     }
   }
-
-
 
   static Future<void> rateOrganizer(String organizerId, int rating) async {
     final token = await getToken();
@@ -810,5 +807,4 @@ class DatabaseHelper {
       }
     }
   }
-
 }
