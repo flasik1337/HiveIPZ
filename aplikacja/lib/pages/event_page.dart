@@ -26,7 +26,8 @@ Widget _buildActionButton(String text, VoidCallback onPressed) {
     child: TextButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFFC300),
-        disabledBackgroundColor: const Color(0xFFFFC300), // zachowaj żółty nawet jak disabled
+        disabledBackgroundColor:
+            const Color(0xFFFFC300), // zachowaj żółty nawet jak disabled
         disabledForegroundColor: Colors.black.withOpacity(0.5),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
         shape: RoundedRectangleBorder(
@@ -240,6 +241,63 @@ class _EventPageState extends State<EventPage> {
     }
   }
 
+  void _showDiscountDialog(
+      BuildContext context, double price, bool canUsePromo) async {
+    if (!canUsePromo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nie możesz użyć promocji na ten bilet.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Użyć promocji?'),
+          content: const Text(
+              'Masz aktywną promocję -10zł. Czy chcesz ją wykorzystać na ten bilet?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Użyj'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      Navigator.pop(context); // zamknij poprzedni bottomsheet
+
+      final paymentConfirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => PaymentBottomSheet(
+          price: price,
+          hasDiscount: true,
+          onDiscountTap: () => _showDiscountDialog(context, price, canUsePromo),
+        ),
+      );
+
+      if (paymentConfirmed == true) {
+        await DatabaseHelper.joinEvent(currentEvent.id);
+        if (!mounted) return;
+        setState(() {
+          isUserJoined = true;
+          currentEvent = currentEvent.copyWith(
+            registeredParticipants: currentEvent.registeredParticipants + 1,
+          );
+        });
+      }
+    }
+  }
+
   void _showParticipantsModal(BuildContext context) async {
     List<String> participants =
         await DatabaseHelper.getEventParticipants(currentEvent.id);
@@ -394,11 +452,20 @@ class _EventPageState extends State<EventPage> {
 
         // Obsługa płatności dla wydarzeń płatnych
         if (currentEvent.cena > 0) {
+          final hasPromo = await DatabaseHelper.hasPromotion(
+              int.parse(userId!), 'promo_ticket');
+          final canUsePromo = hasPromo && currentEvent.cena > 10;
+
           final paymentConfirmed = await showModalBottomSheet<bool>(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => const PaymentBottomSheet(),
+            builder: (context) => PaymentBottomSheet(
+              price: currentEvent.cena,
+              hasDiscount: false, // <- na start false
+              onDiscountTap: () =>
+                  _showDiscountDialog(context, currentEvent.cena, canUsePromo),
+            ),
           );
 
           if (paymentConfirmed != true) return;
@@ -550,8 +617,12 @@ class _EventPageState extends State<EventPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.calendar_today, color: Colors.black,),
-              label: const Text('Dodaj do Google Kalendarza', style: TextStyle(color: Colors.black)),
+              icon: const Icon(
+                Icons.calendar_today,
+                color: Colors.black,
+              ),
+              label: const Text('Dodaj do Google Kalendarza',
+                  style: TextStyle(color: Colors.black)),
               onPressed: _addToGoogleCalendar,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFC300),
@@ -600,7 +671,8 @@ class _EventPageState extends State<EventPage> {
               isUserJoined &&
               !isUserOwner))
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
             Padding(
