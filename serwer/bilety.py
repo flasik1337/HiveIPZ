@@ -1070,12 +1070,25 @@ def get_users_events(user_id):
         cursor.execute(sql, (user_id,))
         events = cursor.fetchall()
 
-        # Konwersja datetime na string
+        # Konwersja wszystkich datetime na string i decimal na float
         for event in events:
-            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+            if 'start_date' in event and event['start_date']:
+                event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Konwersja decimals na float dla JSON serialization
+            if 'cena' in event and event['cena'] is not None:
+                event['cena'] = float(event['cena'])
+                
+            # Dodatkowe konwersje
+            if 'score' in event and event['score'] is not None:
+                event['score'] = int(event['score'])
+                
+            if 'is_promoted' in event:
+                event['is_promoted'] = bool(event['is_promoted'])
 
         return jsonify(events), 200
     except Exception as e:
+        print(f"Error in get_users_events: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/joined_events', methods=['GET'])
@@ -1254,10 +1267,20 @@ def get_organizer_rating(organizer_id):
         cursor = mydb.cursor(dictionary=True)
         cursor.execute("SELECT ROUND(AVG(rating), 2) AS avg_rating FROM organizer_ratings WHERE organizer_id = %s", (organizer_id,))
         result = cursor.fetchone()
-        avg = result['avg_rating'] or 0.0
+        
+        # Bezpieczna obsługa przypadku braku ocen (NULL)
+        if result is None or result['avg_rating'] is None:
+            avg = 0.0
+        else:
+            try:
+                avg = float(result['avg_rating'])
+            except (ValueError, TypeError):
+                avg = 0.0
+                
         return jsonify({'average_rating': avg}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in get_organizer_rating: {e}")
+        return jsonify({'error': str(e), 'average_rating': 0.0}), 500
 
 
 
@@ -1606,6 +1629,37 @@ def get_ticket_details(ticket_number):
         return jsonify(ticket), 200
     except Exception as e:
         print(f"Błąd podczas pobierania szczegółów biletu: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/events/<event_id>', methods=['GET'])
+def get_event(event_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT * FROM events WHERE id = %s"
+        cursor.execute(sql, (event_id,))
+        event = cursor.fetchone()
+        
+        if not event:
+            return jsonify({'error': 'Wydarzenie nie istnieje'}), 404
+        
+        # Konwersja datetime na string i decimal na float
+        if 'start_date' in event and event['start_date']:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Konwersja decimals na float dla JSON serialization
+        if 'cena' in event and event['cena'] is not None:
+            event['cena'] = float(event['cena'])
+            
+        # Dodatkowe konwersje
+        if 'score' in event and event['score'] is not None:
+            event['score'] = int(event['score'])
+            
+        if 'is_promoted' in event:
+            event['is_promoted'] = bool(event['is_promoted'])
+        
+        return jsonify(event), 200
+    except Exception as e:
+        print(f"Error in get_event: {e}")
         return jsonify({'error': str(e)}), 500
 
 

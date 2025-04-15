@@ -740,13 +740,22 @@ class DatabaseHelper {
 
 
   static Future<double> getOrganizerRating(String organizerId) async {
-    final url = Uri.parse('$link/organizer/$organizerId/rating');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return double.tryParse(data['average_rating'].toString()) ?? 0.0;
-    } else {
-      throw Exception('Błąd pobierania oceny organizatora');
+    try {
+      final url = Uri.parse('$link/organizer/$organizerId/rating');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Bezpieczne parsowanie i obsługa przypadku, gdy brak ocen (null lub empty)
+        final ratingValue = data['average_rating'];
+        if (ratingValue == null) return 0.0;
+        return double.tryParse(ratingValue.toString()) ?? 0.0;
+      } else {
+        print('Błąd pobierania oceny organizatora: ${response.statusCode} - ${response.body}');
+        return 0.0; // Zwracamy 0 zamiast rzucania wyjątku
+      }
+    } catch (e) {
+      print('Wyjątek podczas pobierania oceny organizatora: $e');
+      return 0.0; // Zwracamy 0 w przypadku błędu zamiast rzucania wyjątku
     }
   }
 

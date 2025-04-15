@@ -1608,6 +1608,37 @@ def get_ticket_details(ticket_number):
         print(f"Błąd podczas pobierania szczegółów biletu: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/events/<event_id>', methods=['GET'])
+def get_event(event_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT * FROM events WHERE id = %s"
+        cursor.execute(sql, (event_id,))
+        event = cursor.fetchone()
+        
+        if not event:
+            return jsonify({'error': 'Wydarzenie nie istnieje'}), 404
+        
+        # Konwersja datetime na string i decimal na float
+        if 'start_date' in event and event['start_date']:
+            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Konwersja decimals na float dla JSON serialization
+        if 'cena' in event and event['cena'] is not None:
+            event['cena'] = float(event['cena'])
+            
+        # Dodatkowe konwersje
+        if 'score' in event and event['score'] is not None:
+            event['score'] = int(event['score'])
+            
+        if 'is_promoted' in event:
+            event['is_promoted'] = bool(event['is_promoted'])
+        
+        return jsonify(event), 200
+    except Exception as e:
+        print(f"Error in get_event: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     ip = get_local_ip()
