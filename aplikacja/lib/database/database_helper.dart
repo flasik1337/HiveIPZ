@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseHelper {
   // 'http://212.127.78.92:5000';
-  static const String link = 'http://192.168.56.1:5000';
+  static const String link = 'https://vps.jakosinski.pl:5000';
 
   static Future<void> addUser(
     String name,
@@ -805,6 +805,52 @@ class DatabaseHelper {
       } catch (e) {
         throw Exception('Błąd serwera: nieoczekiwany format odpowiedzi');
       }
+    }
+  }
+
+  static Future<void> addUserPromotion(int userId, String rewardType) async {
+    final url = Uri.parse('$link/user_promotions');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'reward_type': rewardType,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Nie udało się dodać promocji: $error');
+    }
+  }
+
+  static Future<bool> hasPromotion(int userId, String rewardType) async {
+    final url = Uri.parse(
+        '$link/user_promotions/check?user_id=$userId&reward_type=$rewardType');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['has_promotion'] == true;
+    } else {
+      throw Exception('Błąd podczas sprawdzania promocji użytkownika.');
+    }
+  }
+
+  static Future<void> deactivatePromotion(int userId, String rewardType) async {
+    final url = Uri.parse('$link/user_promotions/deactivate');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'reward_type': rewardType,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Nie udało się dezaktywować promocji');
     }
   }
 }

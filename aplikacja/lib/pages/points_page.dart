@@ -16,6 +16,7 @@ class _PointsPageState extends State<PointsPage> {
   int? userId;
   int? userPoints;
   List<Event>? userEvents; // Lista obiektów Event
+  double _scale = 1.0;
 
   @override
   void initState() {
@@ -39,7 +40,6 @@ class _PointsPageState extends State<PointsPage> {
         userId = data?['id'];
         userPoints = data?['points'];
       });
-
       // Pobranie wydarzeń dla tego użytkownika
       if (userId != null) {
         final events = await DatabaseHelper.getUserEvents(userId!);
@@ -120,6 +120,107 @@ class _PointsPageState extends State<PointsPage> {
         SnackBar(content: Text('Błąd podczas promocji wydarzenia: $e')),
       );
     }
+  }
+
+  void _showEventSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Wybierz wydarzenie do promocji'),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: userEvents?.length ?? 0,
+              itemBuilder: (context, index) {
+                final event = userEvents?[index];
+                return ListTile(
+                  title: Text(event?.name ?? 'Brak nazwy'),
+                  trailing: event?.isPromoted == true
+                      ? Icon(Icons.star, color: Colors.orange)
+                      : null,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    promoteEvent(event!);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPromoTicketConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Potwierdzenie'),
+          content: Text(
+            'Czy na pewno chcesz wykupić promocję -10zł na dowolny bilet za 3500 HoneyCoins?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+
+                if ((userPoints ?? 0) < 3500) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Nie masz wystarczająco HoneyCoins!')),
+                  );
+                  return;
+                }
+
+                try {
+                  // Odejmij punkty
+                  int newPoints = userPoints! - 3500;
+                  await DatabaseHelper.updateUser(
+                    userId.toString(),
+                    {'points': newPoints.toString()},
+                  );
+
+                  // Dodaj promocję
+                  final hasPromo = await DatabaseHelper.hasPromotion(
+                      userId!, 'promo_ticket');
+                  if (hasPromo) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Masz już aktywną promocję -10zł.')),
+                    );
+                    return;
+                  }
+                  await DatabaseHelper.addUserPromotion(
+                      userId!, 'promo_ticket');
+
+                  setState(() {
+                    userPoints = newPoints;
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Promocja została wykupiona!')),
+                  );
+                } catch (e) {
+                  print('Błąd przy wykupie: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Wystąpił błąd podczas wykupu.')),
+                  );
+                }
+              },
+              child: Text('Tak, wykup'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -207,79 +308,53 @@ class _PointsPageState extends State<PointsPage> {
                     ),
                     SizedBox(height: 20),
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: userEvents?.length ?? 0,
-                        itemBuilder: (context, index) {
-                          final event = userEvents?[index];
-
-                          return GestureDetector(
-                            onTap: () {
-                              promoteEvent(event!);
-                            },
-                            child: Center(
-                              child: Container(
-                                width: cardWidth,
-                                margin: EdgeInsets.only(bottom: 16.0),
-                                height: 160,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(25.0),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 32.0,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text("Promocja wydarzenia",
-                                              style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.grey)),
-                                          Text(event?.name ?? 'Brak nazwy',
-                                              style: TextStyle(
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: -15,
-                                      right: -15,
-                                      child: Align(
-                                        alignment: Alignment.bottomRight,
-                                        widthFactor:
-                                            20.1, // Zmniejszamy, aby zwiększyć zaokrąglenie
-                                        heightFactor:
-                                            0.1, // Zmniejszamy, aby zwiększyć zaokrąglenie
-                                        child: ClipOval(
-                                          child: Container(
-                                            width: 100,
-                                            height: 100,
-                                            decoration: BoxDecoration(
-                                              color: Colors.yellow,
-                                            ),
-                                            child: Icon(Icons.trending_up,
-                                                color: Colors.black, size: 40),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(120.0)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(height: 20),
+                              Column(
+                                children: [
+                                  RewardCard(
+                                    title: "Promowanie wydarzenia",
+                                    priceText: "1000′",
+                                    badgeText:
+                                        "", // niepotrzebne, bo używamy ikony
+                                    isIcon: true,
+                                    onTap: () {
+                                      if ((userEvents?.isEmpty ?? true)) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  "Brak wydarzeń do promowania.")),
+                                        );
+                                        return;
+                                      }
+                                      _showEventSelectionDialog();
+                                    },
+                                  ),
+                                  RewardCard(
+                                    title: "Promocja na dowolny bilet",
+                                    priceText: "3500′",
+                                    badgeText: "-10zł",
+                                    isIcon: false,
+                                    onTap: () {
+                                      _showPromoTicketConfirmationDialog();
+                                    },
+                                  ),
+                                ],
                               ),
-                            ),
-                          );
-                        },
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -288,6 +363,127 @@ class _PointsPageState extends State<PointsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class RewardCard extends StatefulWidget {
+  final String title;
+  final String priceText;
+  final String badgeText;
+  final bool isIcon;
+  final VoidCallback onTap;
+
+  const RewardCard({
+    required this.title,
+    required this.priceText,
+    required this.badgeText,
+    this.isIcon = false,
+    required this.onTap,
+    super.key,
+  });
+
+  @override
+  State<RewardCard> createState() => _RewardCardState();
+}
+
+class _RewardCardState extends State<RewardCard> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = 0.95),
+      onTapUp: (_) {
+        setState(() => _scale = 1.0);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _scale = 1.0),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: Duration(milliseconds: 100),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.75,
+              height: 160,
+              color: Colors.white, // tło przeniesione tutaj
+              child: Stack(
+                children: [
+                  // Żółte kółko
+                  Positioned(
+                    top: -10,
+                    right: -10,
+                    child: Transform.translate(
+                      offset: Offset(8, -4),
+                      child: Container(
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.yellow[600],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: widget.isIcon
+                              ? Icon(Icons.trending_up,
+                                  size: 80, color: Colors.black)
+                              : Text(
+                                  widget.badgeText,
+                                  style: TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Treść
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.priceText,
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Spacer(),
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
