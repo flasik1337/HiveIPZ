@@ -238,7 +238,7 @@ def login():
 
     except Exception as e:
         print(f"[SERVER_ERROR] {str(e)}")  # Logowanie błędów serwera
-        return jsonify(({'message': f'Błąd serwera: {str(e)}')}), 500
+        return jsonify({'message': f'Błąd serwera: {str(e)}'}), 500
 
 @app.route('/google_login', methods=['POST'])
 def google_login():
