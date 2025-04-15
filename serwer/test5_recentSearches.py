@@ -1,6 +1,6 @@
 import smtplib
 from email.mime.text import MIMEText
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect, session
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
@@ -15,6 +15,7 @@ from datetime import timedelta # Obsługa czasu niekatywnosci
 import json
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
+from requests_oauthlib import OAuth1Session
 
 
 load_dotenv()
@@ -67,6 +68,16 @@ mydb = mysql.connector.connect(
 
 MAIL_USERNAME = os.getenv("MAIL_DEFAULT_SENDER")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+
+
+# Konfiguracja połączenia z Twitter
+app.secret_key = secrets.token_hex(16) 
+
+REQUEST_TOKEN_URL = "https://api.twitter.com/oauth/request_token"
+AUTHORIZATION_URL = "https://api.twitter.com/oauth/authorize"
+ACCESS_TOKEN_URL = "https://api.twitter.com/oauth/access_token"
+VERIFY_CREDENTIALS_URL = "https://api.twitter.com/1.1/account/verify_credentials.json"
+
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -1042,7 +1053,382 @@ def get_joined_events():
         return jsonify({'error': str(e)}), 500
 
 
+
+@app.route('/events/<event_id>/banned_users', methods=['GET'])
+def get_banned_users(event_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        sql = """
+        SELECT u.nickName FROM event_bans b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.event_id = %s
+        """
+        cursor.execute(sql, (event_id,))
+        banned = cursor.fetchall()
+        return jsonify([row['nickName'] for row in banned]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/events/<event_id>/unban', methods=['POST'])
+def unban_user(event_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+
+        token = token.split(" ")[1]
+        cursor = mydb.cursor(dictionary=True)
+
+        # Pobierz ID admina
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        admin = cursor.fetchone()
+        if not admin:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        admin_id = admin['id']
+
+        # Sprawdź czy user to właściciel eventu
+        cursor.execute("SELECT * FROM events WHERE id = %s AND user_id = %s", (event_id, admin_id))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Brak uprawnień do odbanowania'}), 403
+
+        # Pobierz nickName do odbanowania
+        data = request.get_json()
+        nick = data.get('nickName')
+        if not nick:
+            return jsonify({'error': 'Brak nickName'}), 400
+
+        cursor.execute("SELECT id FROM users WHERE nickName = %s", (nick,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nie znaleziono użytkownika'}), 404
+
+        user_id = user['id']
+
+        cursor.execute("DELETE FROM event_bans WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+        mydb.commit()
+
+        return jsonify({'message': 'Użytkownik został odbanowany'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
+
+@app.route('/report_event', methods=['POST'])
+def report_event():
+    try:
+        data = request.get_json()
+        event_id = data['event_id']
+        reason = data['reason']
+
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+        cursor.execute("INSERT INTO event_reports (event_id, reason, user_id) VALUES (%s, %s, %s)", (event_id, reason, user_id))
+        mydb.commit()
+        return jsonify({'message': 'Zgłoszenie zostało zapisane'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/rate_organizer', methods=['POST'])
+def rate_organizer():
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        data = request.get_json()
+        organizer_id = data.get("organizer_id")
+        rating = int(data.get("rating"))
+
+        if not (1 <= rating <= 5):
+            return jsonify({'error': 'Ocena musi być w zakresie 1–5'}), 400
+
+        cursor.execute("""
+            INSERT INTO organizer_ratings (organizer_id, rated_by_user_id, rating)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE rating = %s
+        """, (organizer_id, user["id"], rating, rating))
+        mydb.commit()
+
+        return jsonify({'message': 'Ocena zapisana'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/organizer/<int:organizer_id>/rating', methods=['GET'])
+def get_organizer_rating(organizer_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT ROUND(AVG(rating), 2) AS avg_rating FROM organizer_ratings WHERE organizer_id = %s", (organizer_id,))
+        result = cursor.fetchone()
+        avg = result['avg_rating'] or 0.0
+        return jsonify({'average_rating': avg}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/has_rated/<int:organizer_id>', methods=['GET'])
+def has_rated(organizer_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        cursor.execute("""
+            SELECT COUNT(*) AS total FROM organizer_ratings
+            WHERE organizer_id = %s AND rated_by_user_id = %s
+        """, (organizer_id, user['id']))
+        result = cursor.fetchone()
+
+        return jsonify({'hasRated': result['total'] > 0}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+    
+@app.route('/twitter/login')
+def twitter_login():
+    twitter = OAuth1Session(
+        os.getenv("TWITTER_API_KEY"),
+        client_secret=os.getenv("TWITTER_API_SECRET"),
+        callback_uri=os.getenv("TWITTER_CALLBACK_URL")
+    )
+
+    fetch_response = twitter.fetch_request_token(REQUEST_TOKEN_URL)
+    session['oauth_token'] = fetch_response.get('oauth_token')
+    session['oauth_token_secret'] = fetch_response.get('oauth_token_secret')
+
+    authorization_url = twitter.authorization_url(AUTHORIZATION_URL)
+    return redirect(authorization_url)
+
+@app.route('/twitter/callback')
+def twitter_callback():
+    oauth_token = request.args.get('oauth_token')
+    oauth_verifier = request.args.get('oauth_verifier')
+
+    twitter = OAuth1Session(
+        os.getenv("TWITTER_API_KEY"),
+        client_secret=os.getenv("TWITTER_API_SECRET"),
+        resource_owner_key=session['oauth_token'],
+        resource_owner_secret=session['oauth_token_secret'],
+        verifier=oauth_verifier,
+    )
+
+    oauth_tokens = twitter.fetch_access_token(ACCESS_TOKEN_URL)
+    access_token = oauth_tokens['oauth_token']
+    access_token_secret = oauth_tokens['oauth_token_secret']
+
+    # Pobierz dane użytkownika z Twittera
+    twitter = OAuth1Session(
+        os.getenv("TWITTER_API_KEY"),
+        client_secret=os.getenv("TWITTER_API_SECRET"),
+        resource_owner_key=access_token,
+        resource_owner_secret=access_token_secret
+    )
+    response = twitter.get(VERIFY_CREDENTIALS_URL)
+    profile = response.json()
+
+    twitter_id = profile['id_str']
+    screen_name = profile['screen_name']
+    name = profile.get('name', '')
+    email = profile.get('email', '')  # tylko jeśli masz dostęp
+
+    # TODO: sprawdź w bazie czy istnieje, jak nie to utwórz
+    # Potem zwróć token lub przekieruj do frontu
+    return jsonify({
+        'id': twitter_id,
+        'nick': screen_name,
+        'name': name
+    })
+
+@app.route('/events/<event_id>/rate', methods=['POST'])
+def rate_event(event_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+        data = request.get_json()
+        rate_type = data.get("type")  # "like" lub "dislike"
+
+        if rate_type not in ("like", "dislike"):
+            return jsonify({'error': 'Nieprawidłowy typ oceny'}), 400
+
+        # Sprawdź czy user już ocenił
+        cursor.execute("SELECT type FROM event_likes WHERE user_id = %s AND event_id = %s", (user_id, event_id))
+        existing = cursor.fetchone()
+
+        score_change = 0
+
+        if existing:
+            if existing['type'] == rate_type:
+                return jsonify({'message': 'Już ocenione'}), 200
+            # Cofamy poprzednią ocenę
+            if existing['type'] == 'like' and rate_type == 'dislike':
+                score_change = -2
+            elif existing['type'] == 'dislike' and rate_type == 'like':
+                score_change = 2
+            cursor.execute("UPDATE event_likes SET type = %s WHERE user_id = %s AND event_id = %s",
+                           (rate_type, user_id, event_id))
+        else:
+            score_change = 1 if rate_type == 'like' else -1
+            cursor.execute("INSERT INTO event_likes (user_id, event_id, type) VALUES (%s, %s, %s)",
+                           (user_id, event_id, rate_type))
+
+        # Aktualizuj score w tabeli events
+        cursor.execute("UPDATE events SET score = score + %s WHERE id = %s", (score_change, event_id))
+        mydb.commit()
+
+        return jsonify({'message': 'Ocena zapisana'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/events/<event_id>/rating_status', methods=['GET'])
+def get_event_rating_status(event_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+
+        # Ocena użytkownika
+        cursor.execute("SELECT type FROM event_likes WHERE user_id = %s AND event_id = %s", (user_id, event_id))
+        row = cursor.fetchone()
+        rating = row['type'] if row else None
+
+        # Score wydarzenia
+        cursor.execute("SELECT score FROM events WHERE id = %s", (event_id,))
+        score_row = cursor.fetchone()
+        score = score_row['score'] if score_row else 0
+
+        return jsonify({'rating': rating, 'score': score}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/events/<event_id>/comments', methods=['POST'])
+def add_comment(event_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id, nickName FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        data = request.get_json()
+        content = data.get("text")
+
+        if not content or len(content.strip()) == 0:
+            return jsonify({'error': 'Komentarz nie może być pusty'}), 400
+
+        cursor.execute("""
+            INSERT INTO event_comments (event_id, user_id, content, created_at)
+            VALUES (%s, %s, %s, NOW())
+        """, (event_id, user['id'], content))
+        mydb.commit()
+
+        return jsonify({'message': 'Komentarz dodany'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/events/<event_id>/comments', methods=['GET'])
+def get_comments(event_id):
+    try:
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT c.id, c.user_id, u.nickName AS username, c.content AS text, c.created_at
+            FROM event_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.event_id = %s
+            ORDER BY c.created_at DESC
+        """, (event_id,))
+        comments = cursor.fetchall()
+
+        return jsonify(comments), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/events/<event_id>/comments/<comment_id>/report', methods=['POST'])
+def report_comment(event_id, comment_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu'}), 401
+        token = token.split(" ")[1]
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        data = request.get_json()
+        reason = data.get("reason")
+
+        cursor.execute("""
+            INSERT INTO comment_reports (comment_id, event_id, user_id, reason, reported_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        """, (comment_id, event_id, user['id'], reason))
+        mydb.commit()
+
+        return jsonify({'message': 'Komentarz zgłoszony'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     ip = get_local_ip()
