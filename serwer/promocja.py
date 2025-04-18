@@ -1706,6 +1706,30 @@ def check_user_promotion():
         print(f"Błąd w check_user_promotion: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/user_promotions/deactivate', methods=['POST'])
+def deactivate_promotion():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        reward_type = data.get('reward_type')
+
+        if not user_id or not reward_type:
+            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
+
+        cursor = mydb.cursor()
+        cursor.execute("""
+            UPDATE user_promotions
+            SET active = 0
+            WHERE user_id = %s AND reward_type = %s AND active = 1
+        """, (user_id, reward_type))
+        mydb.commit()
+
+        return jsonify({'message': 'Promocja została dezaktywowana'}), 200
+
+    except Exception as e:
+        print(f"Błąd przy dezaktywacji promocji: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     ip = get_local_ip()
