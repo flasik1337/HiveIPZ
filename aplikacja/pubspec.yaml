@@ -21,7 +21,7 @@ dependencies:
   flutter_svg: ^2.0.17
   cupertino_icons: ^1.0.8
   add_2_calendar: ^2.1.0
-  google_sign_in: ^6.3.0
+#  google_sign_in: ^6.3.0
   flutter_facebook_auth: ^6.0.4
   url_launcher: ^6.2.5
   intl: ^0.18.1
