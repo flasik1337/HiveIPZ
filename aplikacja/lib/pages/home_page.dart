@@ -14,10 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../widgets/rating_panel.dart';
 
-
-
+import '../widgets/sorting_modal_bottom_sheet.dart';
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
@@ -39,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   double searchBarWidth = 56;
   PageController _pageController = PageController();
   int _currentPage = 0;
-  Map<String, Map<String, dynamic>> userRatings = {}; // eventId -> 'like' lub 'dislike'
+  Map<String, String?> userRatings = {}; // eventId -> 'like' lub 'dislike'
   final FocusNode _searchFocusNode = FocusNode();
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
@@ -54,7 +52,6 @@ class _HomePageState extends State<HomePage> {
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
     _pageController = PageController();
-
   }
 
   void _rateEvent(String eventId, bool isLike) async {
@@ -64,7 +61,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rate');
+    final url =
+        Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rate');
 
     try {
       final response = await http.post(
@@ -87,7 +85,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   Future<void> _fetchUserRating(String eventId) async {
     final token = await DatabaseHelper.getToken();
     if (token == null) {
@@ -95,7 +92,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rating_status');
+    final url = Uri.parse(
+        'https://vps.jakosinski.pl:5000/events/$eventId/rating_status');
 
     try {
       final response = await http.get(
@@ -105,12 +103,9 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (!mounted) return;
         setState(() {
-          userRatings[eventId] = {
-            'rating': data['rating'], // like / dislike / null
-            'score': data['score'],   // liczba punktów
-          };
+          userRatings[eventId] =
+              data['rating']; // 'like' lub 'dislike' lub null
         });
       }
     } catch (e) {
@@ -118,15 +113,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
-
-
-
   // Pobieranie wydarzeń z bazy
   Future<void> _fetchAllEvents() async {
     try {
       final eventsData = await DatabaseHelper.getAllEvents();
-      if (!mounted) return;
       setState(() {
         events = eventsData.map((data) => Event.fromJson(data)).toList();
         events.sort((a, b) {
@@ -143,7 +133,6 @@ class _HomePageState extends State<HomePage> {
   // pobierz poprzednie wyszukiwania (zapis do konta użytkownika np. 5 ostatnich?)
   Future<void> _loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
     setState(() {
       recentSearches =
           prefs.getStringList('recentSearches') ?? ['zut', 'pudzian', 'rabbit'];
@@ -151,7 +140,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _toggleSearch() {
-    if (!mounted) return;
     setState(() {
       isSearching = !isSearching;
       searchBarWidth =
@@ -172,7 +160,6 @@ class _HomePageState extends State<HomePage> {
 
     // Dodaj do recentSearches jeśli nie ma
     if (!recentSearches.contains(query)) {
-      if (!mounted) return;
       setState(() {
         recentSearches.insert(0, query);
         if (recentSearches.length > 5) recentSearches.removeLast();
@@ -180,18 +167,16 @@ class _HomePageState extends State<HomePage> {
       final prefs = await SharedPreferences.getInstance();
       prefs.setStringList('recentSearches', recentSearches);
     }
-    if (!mounted) return;
+
     setState(() {
       isSearching = false;
     });
   }
 
-
   /// Obsługa NavigationBara na dole ekranu
   /// args:
   ///   int index: wybrany przycisk
   void _onBarTapped(int index) {
-    if (!mounted) return;
     setState(() {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
@@ -219,7 +204,6 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
-                if (!mounted) return;
                 setState(() {
                   events.add(newEvent);
                 });
@@ -229,7 +213,8 @@ class _HomePageState extends State<HomePage> {
           break;
         case 3:
           // Filtrowanie
-          EventFilterService.showFilterModalBottomSheet(context: context, events: events);
+          EventFilterService.showFilterModalBottomSheet(
+              context: context, events: events);
           break;
         case 4:
           // Profil użytkownika
@@ -254,31 +239,29 @@ class _HomePageState extends State<HomePage> {
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                   onRefresh: _fetchAllEvents,
-            child: PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              itemCount: events.length,
-              onPageChanged: (index) {
-                if (!mounted) return;
-                setState(() {
-                  _currentPage = index;
-                });
-                _fetchUserRating(events[index].id);
-              },
-              itemBuilder: (context, index) {
-                final event = events[index];
-                return EventCard(
-                  event: event,
-                  onUpdate: (updatedEvent) {
-                    if (!mounted) return;
-                    setState(() {
-                      events[index] = updatedEvent;
-                    });
-                  },
-                );
-              },
-            ),
-          ),
+                  child: PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    itemCount: events.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                      _fetchUserRating(events[index].id);
+                    },
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(
+                        event: event,
+                        onUpdate: (updatedEvent) {
+                          setState(() {
+                            events[index] = updatedEvent;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
 
           AnimatedOpacity(
               opacity: isSearching ? 1.0 : 0.0,
@@ -391,8 +374,8 @@ class _HomePageState extends State<HomePage> {
           ),
 
           Positioned(
-              top: MediaQuery.of(context).size.height - 290,
-              left: MediaQuery.of(context).size.width - 85,
+              top: MediaQuery.of(context).size.height - 305,
+              left: MediaQuery.of(context).size.width - 80,
               child: Row(
                 children: [
                   Container(
@@ -404,27 +387,60 @@ class _HomePageState extends State<HomePage> {
                           leading: Icon(Icons.import_export,
                               size: 35, color: Colors.white),
                           onTap: () {
-                            EventSorterService.showSortingModalBottomSheet(
+                            showModalBottomSheet(
                               context: context,
-                              events: events,
-                              refresh: () => setState(() {}),
-                              selectedSortingType: selectedSortingType,
-                              sortingAscending: sortingAscending,
-                              onSortingChanged: (type, ascending) {
-                                if (!mounted) return;
-                                setState(() {
-                                  selectedSortingType = type;
-                                  sortingAscending = ascending;
-                                });
-                              },
+                              builder: (_) => SortingModalBottomSheet(
+                                events: events,
+                                selectedSortingType: selectedSortingType,
+                                sortingAscending: sortingAscending,
+                                onSortingChanged: (type, asc) {
+                                  setState(() {
+                                    selectedSortingType = type;
+                                    sortingAscending = asc;
+                                  });
+                                },
+                                refresh: () => setState(
+                                    () {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
+                              ),
                             );
                           },
                         ),
                         if (events.isNotEmpty)
-                          RatingPanel(
-                            event: events[_currentPage],
-                            userRating: userRatings[events[_currentPage].id],
-                            onRate: (isLike) => _rateEvent(events[_currentPage].id, isLike),
+                          ListTile(
+                            leading: Icon(
+                              Icons.thumb_down_alt_outlined,
+                              size: 35,
+                              color: userRatings[events[_currentPage].id] ==
+                                      'dislike'
+                                  ? Colors.red
+                                  : Colors.white,
+                            ),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, false),
+                          ),
+                        if (events.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(0, 0, 17, 0),
+                            child: Text(
+                              events[_currentPage].userScore.toString(),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                            ),
+                          ),
+                        if (events.isNotEmpty)
+                          ListTile(
+                            leading: Icon(
+                              Icons.thumb_up_alt_outlined,
+                              size: 35,
+                              color:
+                                  userRatings[events[_currentPage].id] == 'like'
+                                      ? Colors.green
+                                      : Colors.white,
+                            ),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, true),
                           ),
                       ],
                     ),

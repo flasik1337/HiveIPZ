@@ -24,9 +24,12 @@ Widget _buildActionButton(String text, VoidCallback onPressed) {
   return SizedBox(
     width: double.infinity,
     child: TextButton(
-      style: TextButton.styleFrom(
-        backgroundColor: Color(0xFFFFC300),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFC300),
+        disabledBackgroundColor:
+            const Color(0xFFFFC300), // zachowaj żółty nawet jak disabled
+        disabledForegroundColor: Colors.black.withOpacity(0.5),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -62,92 +65,98 @@ class _EventPageState extends State<EventPage> {
   }
 
   void _addToGoogleCalendar() {
-  final calendarEvent = calendar.Event(
-    title: currentEvent.name,
-    description: currentEvent.description,
-    location: currentEvent.location,
-    startDate: currentEvent.startDate,
-    endDate: currentEvent.startDate.add(const Duration(hours: 2)),
-    allDay: false,
-    iosParams: const calendar.IOSParams(reminder: Duration(minutes: 30)),
-    androidParams: const calendar.AndroidParams(emailInvites: []),
-  );
+    final calendarEvent = calendar.Event(
+      title: currentEvent.name,
+      description: currentEvent.description,
+      location: currentEvent.location,
+      startDate: currentEvent.startDate,
+      endDate: currentEvent.startDate.add(const Duration(hours: 2)),
+      allDay: false,
+      iosParams: const calendar.IOSParams(reminder: Duration(minutes: 30)),
+      androidParams: const calendar.AndroidParams(emailInvites: []),
+    );
 
-  calendar.Add2Calendar.addEvent2Cal(calendarEvent);
-}
+    calendar.Add2Calendar.addEvent2Cal(calendarEvent);
+  }
 
+  String? _selectedReason;
+  final List<String> _reportReasons = [
+    'Nieodpowiednia treść',
+    'Fałszywe wydarzenie',
+    'Spam',
+    'Inny powód'
+  ];
 
-String? _selectedReason;
-final List<String> _reportReasons = [
-  'Nieodpowiednia treść',
-  'Fałszywe wydarzenie',
-  'Spam',
-  'Inny powód'
-];
+  void _showReportDialog() async {
+    String? selectedReason;
 
-void _showReportDialog() async {
-  String? selectedReason;
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) {
-      return Padding(
-        padding: MediaQuery.of(context).viewInsets.add(const EdgeInsets.all(16.0)),
-        child: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Zgłoś wydarzenie', style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: 'Wybierz powód'),
-                  items: _reportReasons.map((reason) {
-                    return DropdownMenuItem<String>(
-                      value: reason,
-                      child: Text(reason),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setModalState(() {
-                      selectedReason = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: selectedReason == null ? null : () async {
-                    try {
-                      await DatabaseHelper.reportEvent(currentEvent.id, selectedReason!);
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Zgłoszenie wysłane')),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding:
+              MediaQuery.of(context).viewInsets.add(const EdgeInsets.all(16.0)),
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setModalState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Zgłoś wydarzenie',
+                      style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    decoration:
+                        const InputDecoration(labelText: 'Wybierz powód'),
+                    items: _reportReasons.map((reason) {
+                      return DropdownMenuItem<String>(
+                        value: reason,
+                        child: Text(reason),
                       );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Błąd: ${e.toString()}')),
-                      );
-                    }
-                  },
-                  child: const Text('Wyślij zgłoszenie'),
-                )
-              ],
-            );
-          },
-        ),
-      );
-    },
-  );
-}
-
+                    }).toList(),
+                    onChanged: (value) {
+                      setModalState(() {
+                        selectedReason = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: selectedReason == null
+                        ? null
+                        : () async {
+                            try {
+                              await DatabaseHelper.reportEvent(
+                                  currentEvent.id, selectedReason!);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Zgłoszenie wysłane')),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Błąd: ${e.toString()}')),
+                              );
+                            }
+                          },
+                    child: const Text('Wyślij zgłoszenie'),
+                  )
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
   void _showRatingDialog() {
     showDialog(
-      context: context,
+        context: context,
         builder: (context) {
           int selectedRating = 3;
 
@@ -164,7 +173,9 @@ void _showReportDialog() async {
                       children: List.generate(5, (index) {
                         return IconButton(
                           icon: Icon(
-                            index < selectedRating ? Icons.star : Icons.star_border,
+                            index < selectedRating
+                                ? Icons.star
+                                : Icons.star_border,
                             color: Colors.amber,
                           ),
                           onPressed: () {
@@ -180,10 +191,12 @@ void _showReportDialog() async {
                 actions: [
                   TextButton(
                     onPressed: () async {
-                      await DatabaseHelper.rateOrganizer(currentEvent.userId.toString(), selectedRating);
+                      await DatabaseHelper.rateOrganizer(
+                          currentEvent.userId.toString(), selectedRating);
                       if (!mounted) return;
                       Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dziękujemy za ocenę!')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Dziękujemy za ocenę!')));
                       setState(() {
                         ratingSent = true;
                       });
@@ -195,11 +208,8 @@ void _showReportDialog() async {
               );
             },
           );
-        }
-    );
+        });
   }
-
-
 
   Future<void> _initializeUser() async {
     try {
@@ -207,18 +217,15 @@ void _showReportDialog() async {
       await _checkUserJoinedStatus();
       await _checkIfUserIsOwner();
 
-      final hasRated = await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
+      final hasRated =
+          await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
       setState(() {
         ratingSent = hasRated;
       });
-
-
-
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
   }
-
 
   Future<void> _fetchEvent() async {
     try {
@@ -234,9 +241,68 @@ void _showReportDialog() async {
     }
   }
 
+  void _showDiscountDialog(
+      BuildContext context, double price, bool canUsePromo) async {
+    if (!canUsePromo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nie możesz użyć promocji na ten bilet.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Użyć promocji?'),
+          content: const Text(
+              'Masz aktywną promocję -10zł. Czy chcesz ją wykorzystać na ten bilet?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Użyj'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      Navigator.pop(context); // zamknij poprzedni bottomsheet
+
+      final paymentConfirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => PaymentBottomSheet(
+          price: price,
+          hasDiscount: true,
+          onDiscountTap: () => _showDiscountDialog(context, price, canUsePromo),
+        ),
+      );
+
+      if (paymentConfirmed == true) {
+        await DatabaseHelper.joinEvent(currentEvent.id);
+        if (!mounted) return;
+        setState(() {
+          isUserJoined = true;
+          currentEvent = currentEvent.copyWith(
+            registeredParticipants: currentEvent.registeredParticipants + 1,
+          );
+        });
+      }
+    }
+  }
+
   void _showParticipantsModal(BuildContext context) async {
-    List<String> participants = await DatabaseHelper.getEventParticipants(currentEvent.id);
-    List<String> bannedUsers = await DatabaseHelper.getBannedUsers(currentEvent.id);
+    List<String> participants =
+        await DatabaseHelper.getEventParticipants(currentEvent.id);
+    List<String> bannedUsers =
+        await DatabaseHelper.getBannedUsers(currentEvent.id);
 
     showModalBottomSheet(
       context: context,
@@ -245,8 +311,10 @@ void _showReportDialog() async {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             Future<void> refreshLists() async {
-              final updatedParticipants = await DatabaseHelper.getEventParticipants(currentEvent.id);
-              final updatedBanned = await DatabaseHelper.getBannedUsers(currentEvent.id);
+              final updatedParticipants =
+                  await DatabaseHelper.getEventParticipants(currentEvent.id);
+              final updatedBanned =
+                  await DatabaseHelper.getBannedUsers(currentEvent.id);
               setModalState(() {
                 participants = updatedParticipants;
                 bannedUsers = updatedBanned;
@@ -259,7 +327,9 @@ void _showReportDialog() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Uczestnicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Uczestnicy',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Divider(),
                   Expanded(
                     child: ListView.builder(
@@ -270,41 +340,54 @@ void _showReportDialog() async {
                           title: Text(participants[index]),
                           trailing: isUserOwner
                               ? IconButton(
-                            icon: const Icon(Icons.block, color: Colors.red),
-                            onPressed: () async {
-                              await DatabaseHelper.banUser(currentEvent.id, participants[index]);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Użytkownik został zbanowany')),
-                              );
-                              await refreshLists();
-                            },
-                          )
+                                  icon: const Icon(Icons.block,
+                                      color: Colors.red),
+                                  onPressed: () async {
+                                    await DatabaseHelper.banUser(
+                                        currentEvent.id, participants[index]);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Użytkownik został zbanowany')),
+                                    );
+                                    await refreshLists();
+                                  },
+                                )
                               : null,
                         );
                       },
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Zbanowani użytkownicy', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+                  const Text('Zbanowani użytkownicy',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red)),
                   const Divider(),
                   Expanded(
                     child: ListView.builder(
                       itemCount: bannedUsers.length,
                       itemBuilder: (context, index) {
                         return ListTile(
-                          leading: const Icon(Icons.person_off, color: Colors.red),
+                          leading:
+                              const Icon(Icons.person_off, color: Colors.red),
                           title: Text(bannedUsers[index]),
                           trailing: isUserOwner
                               ? IconButton(
-                            icon: const Icon(Icons.undo, color: Colors.green),
-                            onPressed: () async {
-                              await DatabaseHelper.unbanUser(currentEvent.id, bannedUsers[index]);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Użytkownik został odbanowany')),
-                              );
-                              await refreshLists();
-                            },
-                          )
+                                  icon: const Icon(Icons.undo,
+                                      color: Colors.green),
+                                  onPressed: () async {
+                                    await DatabaseHelper.unbanUser(
+                                        currentEvent.id, bannedUsers[index]);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Użytkownik został odbanowany')),
+                                    );
+                                    await refreshLists();
+                                  },
+                                )
                               : null,
                         );
                       },
@@ -319,9 +402,7 @@ void _showReportDialog() async {
     );
   }
 
-
-
-  Future<void> _checkIfUserIsOwner() async{
+  Future<void> _checkIfUserIsOwner() async {
     if (userId != null) {
       if (!mounted) return;
       setState(() {
@@ -330,13 +411,11 @@ void _showReportDialog() async {
     }
   }
 
-  
-
   Future<void> _checkUserJoinedStatus() async {
     if (userId != null) {
       try {
-        final isJoined = await DatabaseHelper.isUserJoinedEvent(
-            currentEvent.id, userId!);
+        final isJoined =
+            await DatabaseHelper.isUserJoinedEvent(currentEvent.id, userId!);
 
         if (!mounted) return;
         setState(() {
@@ -363,7 +442,8 @@ void _showReportDialog() async {
       } else {
         // Sprawdź limit uczestników
         if (currentEvent.maxParticipants != -1 &&
-            currentEvent.registeredParticipants >= currentEvent.maxParticipants) {
+            currentEvent.registeredParticipants >=
+                currentEvent.maxParticipants) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Wydarzenie jest już pełne!')),
           );
@@ -372,11 +452,20 @@ void _showReportDialog() async {
 
         // Obsługa płatności dla wydarzeń płatnych
         if (currentEvent.cena > 0) {
+          final hasPromo = await DatabaseHelper.hasPromotion(
+              int.parse(userId!), 'promo_ticket');
+          final canUsePromo = hasPromo && currentEvent.cena > 10;
+
           final paymentConfirmed = await showModalBottomSheet<bool>(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (context) => const PaymentBottomSheet(),
+            builder: (context) => PaymentBottomSheet(
+              price: currentEvent.cena,
+              hasDiscount: false, // <- na start false
+              onDiscountTap: () =>
+                  _showDiscountDialog(context, currentEvent.cena, canUsePromo),
+            ),
           );
 
           if (paymentConfirmed != true) return;
@@ -399,7 +488,8 @@ void _showReportDialog() async {
 
   void _loadRating() async {
     try {
-      final rating = await DatabaseHelper.getOrganizerRating(currentEvent.userId.toString());
+      final rating = await DatabaseHelper.getOrganizerRating(
+          currentEvent.userId.toString());
       if (!mounted) return;
       setState(() {
         organizerRating = rating;
@@ -408,7 +498,6 @@ void _showReportDialog() async {
       print("Błąd ładowania oceny: $e");
     }
   }
-
 
   // Wyświetlenie okna z komentarzami
   void _showCommentsModal(BuildContext context) {
@@ -455,7 +544,6 @@ void _showReportDialog() async {
                   style: HiveTextStyles.title,
                 ),
               ),
-
               Positioned(
                 top: 16,
                 right: 16,
@@ -466,18 +554,19 @@ void _showReportDialog() async {
                       _showReportDialog();
                     }
                   },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
                     const PopupMenuItem<String>(
                       value: 'report',
                       child: ListTile(
-                        leading: Icon(Icons.report_gmailerrorred, color: Colors.red),
+                        leading:
+                            Icon(Icons.report_gmailerrorred, color: Colors.red),
                         title: Text('Zgłoś wydarzenie'),
                       ),
                     ),
                   ],
                 ),
               ),
-
               if (organizerRating != null)
                 Positioned(
                   bottom: 0,
@@ -487,7 +576,6 @@ void _showReportDialog() async {
                     style: const TextStyle(fontSize: 14, color: Colors.white),
                   ),
                 ),
-
             ],
           ),
 
@@ -521,8 +609,7 @@ void _showReportDialog() async {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               currentEvent.maxParticipants != -1
-                  ? '${currentEvent.registeredParticipants} / ${currentEvent
-                  .maxParticipants}'
+                  ? '${currentEvent.registeredParticipants} / ${currentEvent.maxParticipants}'
                   : 'Wydarzenie otwarte, ${currentEvent.registeredParticipants} uczestników',
               style: HiveTextStyles.regular,
             ),
@@ -530,9 +617,24 @@ void _showReportDialog() async {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.calendar_today),
-              label: const Text('Dodaj do Google Kalendarza'),
+              icon: const Icon(
+                Icons.calendar_today,
+                color: Colors.black,
+              ),
+              label: const Text('Dodaj do Google Kalendarza',
+                  style: TextStyle(color: Colors.black)),
               onPressed: _addToGoogleCalendar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC300),
+                disabledBackgroundColor: const Color(0xFFFFC300),
+                // zachowaj żółty nawet jak disabled
+                disabledForegroundColor: Colors.black.withOpacity(0.5),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
             ),
           ),
           if (currentEvent.startDate.isBefore(DateTime.now()) &&
@@ -554,15 +656,23 @@ void _showReportDialog() async {
                 onPressed: ratingSent ? null : _showRatingDialog,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFC300),
-                  disabledBackgroundColor: const Color(0xFFFFC300), // zachowaj żółty nawet jak disabled
+                  disabledBackgroundColor: const Color(0xFFFFC300),
+                  // zachowaj żółty nawet jak disabled
                   disabledForegroundColor: Colors.black.withOpacity(0.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
             ),
+          if (!(currentEvent.startDate.isBefore(DateTime.now()) &&
+              isUserJoined &&
+              !isUserOwner))
+            Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
           // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
           if (isUserOwner)
             Padding(
@@ -588,10 +698,12 @@ void _showReportDialog() async {
                   }),
                   const SizedBox(height: 12),
                   _buildActionButton(
-                      currentEvent.isPromoted ? 'Usuń promocję' : 'Promuj wydarzenie',
-                      () async {
+                      currentEvent.isPromoted
+                          ? 'Usuń promocję'
+                          : 'Promuj wydarzenie', () async {
                     try {
-                      final updated = currentEvent.copyWith(isPromoted: !currentEvent.isPromoted);
+                      final updated = currentEvent.copyWith(
+                          isPromoted: !currentEvent.isPromoted);
                       await DatabaseHelper.updateEvent(
                         currentEvent.id,
                         {
@@ -599,9 +711,11 @@ void _showReportDialog() async {
                           'location': currentEvent.location,
                           'description': currentEvent.description,
                           'type': currentEvent.type,
-                          'start_date': currentEvent.startDate.toIso8601String(),
+                          'start_date':
+                              currentEvent.startDate.toIso8601String(),
                           'max_participants': currentEvent.maxParticipants,
-                          'registered_participants': currentEvent.registeredParticipants,
+                          'registered_participants':
+                              currentEvent.registeredParticipants,
                           'image': currentEvent.imagePath,
                           'cena': currentEvent.cena,
                           'is_promoted': updated.isPromoted,
@@ -633,10 +747,23 @@ void _showReportDialog() async {
                 onPressed: () {
                   _joinOrLeaveEvent();
                 },
-                child: Text(isUserJoined ? 'Wypisz się' : 'Zapisz się'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFC300),
+                  disabledBackgroundColor: const Color(0xFFFFC300),
+                  // zachowaj żółty nawet jak disabled
+                  disabledForegroundColor: Colors.black.withOpacity(0.5),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  isUserJoined ? 'Wypisz się' : 'Zapisz się',
+                  style: TextStyle(color: Colors.black),
+                ),
               ),
             ),
-
         ],
       ),
     );

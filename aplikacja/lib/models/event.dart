@@ -17,6 +17,7 @@ class Event {
   final double cena;
   final bool isPromoted;
   final double recommendationScore;
+  final int userScore;
 
   const Event({
     required this.id,
@@ -32,26 +33,50 @@ class Event {
     required this.cena,
     required this.isPromoted,
     this.recommendationScore = 0.0,
+    this.userScore = 0,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      location: json['location'] as String,
-      description: json['description'] as String,
-      type: json['type'] as String,
-      startDate: DateTime.parse(json['start_date'] as String),
-      maxParticipants: json['max_participants'] as int,
-      registeredParticipants: json['registered_participants'] as int,
-      imagePath: json['image'] as String,
-      userId: json['user_id'] != null ? json['user_id'] as int : null,
-      cena: json['cena'] != null
-          ? double.tryParse(json['cena'].toString()) ?? 0.0
-          : 0.0,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      location: json['location']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      startDate: _parseDateTime(json['start_date']),
+      maxParticipants: _parseIntSafely(json['max_participants']) ?? 0,
+      registeredParticipants: _parseIntSafely(json['registered_participants']) ?? 0,
+      imagePath: json['image']?.toString() ?? '',
+      userId: _parseIntSafely(json['user_id']),
+      cena: _parseDoubleSafely(json['cena']) ?? 0.0,
       isPromoted: json['is_promoted'] == 1 || json['is_promoted'] == true,
-
+      userScore: _parseIntSafely(json['score']) ?? 0,
     );
+  }
+
+  // Bezpieczne parsowanie wartości liczbowych
+  static int? _parseIntSafely(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+
+  static double? _parseDoubleSafely(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    try {
+      return DateTime.parse(value.toString());
+    } catch (e) {
+      print('Błąd parsowania daty: $e dla wartości: $value');
+      return DateTime.now();
+    }
   }
 
   Event copyWith({
@@ -68,6 +93,7 @@ class Event {
     double? cena,
     bool? isPromoted,
     double? recommendationScore,
+    int? userScore,
   }) {
     return Event(
       id: id ?? this.id,
@@ -84,6 +110,7 @@ class Event {
       cena: cena ?? this.cena,
       isPromoted: isPromoted ?? this.isPromoted,
       recommendationScore: recommendationScore ?? this.recommendationScore,
+      userScore: userScore ?? this.userScore,
     );
   }
 

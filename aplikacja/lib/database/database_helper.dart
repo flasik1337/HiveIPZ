@@ -78,9 +78,9 @@ class DatabaseHelper {
   static Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
     final url = Uri.parse('$link/google_login');
     final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id_token': idToken}),
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'id_token': idToken}),
     );
 
     if (response.statusCode == 200) {
@@ -114,6 +114,7 @@ class DatabaseHelper {
       throw Exception(error);
     }
   }
+
   static Future<void> verifyToken(String token) async {
     final url = Uri.parse(
         '$link/verify_token'); // Zakładając, że endpoint to '/verify_token'
@@ -236,7 +237,6 @@ class DatabaseHelper {
       throw Exception('Nie udało się sprawdzić czy użytkownik ocenił');
     }
   }
-
 
   //Pobieranie wszystkich wydarzeń
   static Future<List<Map<String, dynamic>>> getAllEvents() async {
@@ -414,19 +414,23 @@ class DatabaseHelper {
 
   // Czesć patrykowa id usera po tokenie
   static Future<Map<String, dynamic>?> getUserByToken(String token) async {
-    final url = Uri.parse('$link/get_user_by_token');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'token': token}),
-    );
+    try {
+      final url = Uri.parse('$link/get_user_by_token');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token}),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['user'];
-    } else {
-      final error = jsonDecode(response.body)['message'];
-      throw Exception(error);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['user'];
+      } else {
+        final error = jsonDecode(response.body)['message'] ?? 'Nieznany błąd';
+        throw Exception(error);
+      }
+    } catch (e) {
+      throw Exception('Błąd połączenia: $e');
     }
   }
 
@@ -545,7 +549,8 @@ class DatabaseHelper {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'nickName': nickName}),  // <-- Wysyłamy nick zamiast user_id
+      body: jsonEncode(
+          {'nickName': nickName}), // <-- Wysyłamy nick zamiast user_id
     );
 
     if (response.statusCode == 200) {
@@ -555,7 +560,6 @@ class DatabaseHelper {
       throw Exception('Błąd przy banowaniu użytkownika: $error');
     }
   }
-
 
   static Future<void> updateUserEventPreferences(
       String userId, List<String> selectedTypes) async {
@@ -578,7 +582,7 @@ class DatabaseHelper {
       if (token == null) {
         throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
       }
-      
+
       // Pobierz dane użytkownika na podstawie tokenu
       final userData = await getUserByToken(token);
       if (userData != null && userData.containsKey('nickName')) {
@@ -592,7 +596,8 @@ class DatabaseHelper {
   }
 
   // Pobieranie komentarzy dla wydarzenia
-  static Future<List<Map<String, dynamic>>> getEventComments(String eventId) async {
+  static Future<List<Map<String, dynamic>>> getEventComments(
+      String eventId) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -637,7 +642,8 @@ class DatabaseHelper {
   }
 
   // Usuwanie komentarza do wydarzenia (dla moderatorów lub autora komentarza)
-  static Future<void> deleteEventComment(String eventId, String commentId) async {
+  static Future<void> deleteEventComment(
+      String eventId, String commentId) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -654,9 +660,10 @@ class DatabaseHelper {
       throw Exception('Błąd podczas usuwania komentarza: $error');
     }
   }
-  
+
   // Zgłaszanie komentarza moderatorom
-  static Future<void> reportComment(String eventId, String commentId, String reason) async {
+  static Future<void> reportComment(
+      String eventId, String commentId, String reason) async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
@@ -691,7 +698,6 @@ class DatabaseHelper {
     }
   }
 
-
   static Future<void> unbanUser(String eventId, String nickName) async {
     final token = await getToken();
     if (token == null) throw Exception('Brak tokenu sesji.');
@@ -712,41 +718,45 @@ class DatabaseHelper {
     }
   }
 
-
   static Future<void> reportEvent(String eventId, String reason) async {
-  final token = await getToken();
-  if (token == null) throw Exception('Brak tokenu');
+    final token = await getToken();
+    if (token == null) throw Exception('Brak tokenu');
 
-  final response = await http.post(
-    Uri.parse('$link/report_event'),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
-    },
-    body: jsonEncode({
-      'event_id': eventId,
-      'reason': reason
-    }),
-  );
+    final response = await http.post(
+      Uri.parse('$link/report_event'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
+      body: jsonEncode({'event_id': eventId, 'reason': reason}),
+    );
 
-  if (response.statusCode != 201) {
-    throw Exception(jsonDecode(response.body)['error'] ?? 'Nie udało się zgłosić wydarzenia');
-  }
-}
-
-
-  static Future<double> getOrganizerRating(String organizerId) async {
-    final url = Uri.parse('$link/organizer/$organizerId/rating');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return double.tryParse(data['average_rating'].toString()) ?? 0.0;
-    } else {
-      throw Exception('Błąd pobierania oceny organizatora');
+    if (response.statusCode != 201) {
+      throw Exception(jsonDecode(response.body)['error'] ??
+          'Nie udało się zgłosić wydarzenia');
     }
   }
 
-
+  static Future<double> getOrganizerRating(String organizerId) async {
+    try {
+      final url = Uri.parse('$link/organizer/$organizerId/rating');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Bezpieczne parsowanie i obsługa przypadku, gdy brak ocen (null lub empty)
+        final ratingValue = data['average_rating'];
+        if (ratingValue == null) return 0.0;
+        return double.tryParse(ratingValue.toString()) ?? 0.0;
+      } else {
+        print(
+            'Błąd pobierania oceny organizatora: ${response.statusCode} - ${response.body}');
+        return 0.0; // Zwracamy 0 zamiast rzucania wyjątku
+      }
+    } catch (e) {
+      print('Wyjątek podczas pobierania oceny organizatora: $e');
+      return 0.0; // Zwracamy 0 w przypadku błędu zamiast rzucania wyjątku
+    }
+  }
 
   static Future<void> rateOrganizer(String organizerId, int rating) async {
     final token = await getToken();
@@ -768,6 +778,79 @@ class DatabaseHelper {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getUserTickets() async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
 
+    final url = Uri.parse('$link/user/tickets');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
 
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      } catch (e) {
+        print('Błąd parsowania odpowiedzi JSON dla biletów: $e');
+        throw Exception('Błąd parsowania danych biletów');
+      }
+    } else {
+      try {
+        final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+        throw Exception('Błąd serwera: $error');
+      } catch (e) {
+        throw Exception('Błąd serwera: nieoczekiwany format odpowiedzi');
+      }
+    }
+  }
+
+  static Future<void> addUserPromotion(int userId, String rewardType) async {
+    final url = Uri.parse('$link/user_promotions');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'reward_type': rewardType,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Nie udało się dodać promocji: $error');
+    }
+  }
+
+  static Future<bool> hasPromotion(int userId, String rewardType) async {
+    final url = Uri.parse(
+        '$link/user_promotions/check?user_id=$userId&reward_type=$rewardType');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['has_promotion'] == true;
+    } else {
+      throw Exception('Błąd podczas sprawdzania promocji użytkownika.');
+    }
+  }
+
+  static Future<void> deactivatePromotion(int userId, String rewardType) async {
+    final url = Uri.parse('$link/user_promotions/deactivate');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'reward_type': rewardType,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Nie udało się dezaktywować promocji');
+    }
+  }
 }

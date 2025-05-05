@@ -238,7 +238,7 @@ def login():
 
     except Exception as e:
         print(f"[SERVER_ERROR] {str(e)}")  # Logowanie błędów serwera
-        return jsonify(({'message': f'Błąd serwera: {str(e)}')}), 500
+        return jsonify({'message': f'Błąd serwera: {str(e)}'}), 500
 
 @app.route('/google_login', methods=['POST'])
 def google_login():
@@ -1066,16 +1066,31 @@ def ban_user(event_id):
 def get_users_events(user_id):
     try:
         cursor = mydb.cursor(dictionary=True)
-        sql = "SELECT * FROM events WHERE user_id = %s"
+        # JEST 'is_promoted' wiec jak na razie ta funkcja nie jest uniwersalna do zwracanai eventow gdzie user jest wlascicielem wsm to pewnie ta 
+        # funckja powiela podobna ale niech jest XD
+        sql = "SELECT * FROM events WHERE user_id = %s AND is_promoted = 0"
         cursor.execute(sql, (user_id,))
         events = cursor.fetchall()
 
-        # Konwersja datetime na string
+        # Konwersja wszystkich datetime na string i decimal na float
         for event in events:
-            event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+            if 'start_date' in event and event['start_date']:
+                event['start_date'] = event['start_date'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Konwersja decimals na float dla JSON serialization
+            if 'cena' in event and event['cena'] is not None:
+                event['cena'] = float(event['cena'])
+                
+            # Dodatkowe konwersje
+            if 'score' in event and event['score'] is not None:
+                event['score'] = int(event['score'])
+                
+            if 'is_promoted' in event:
+                event['is_promoted'] = bool(event['is_promoted'])
 
         return jsonify(events), 200
     except Exception as e:
+        print(f"Error in get_users_events: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/joined_events', methods=['GET'])
@@ -1254,10 +1269,20 @@ def get_organizer_rating(organizer_id):
         cursor = mydb.cursor(dictionary=True)
         cursor.execute("SELECT ROUND(AVG(rating), 2) AS avg_rating FROM organizer_ratings WHERE organizer_id = %s", (organizer_id,))
         result = cursor.fetchone()
-        avg = result['avg_rating'] or 0.0
+        
+        # Bezpieczna obsługa przypadku braku ocen (NULL)
+        if result is None or result['avg_rating'] is None:
+            avg = 0.0
+        else:
+            try:
+                avg = float(result['avg_rating'])
+            except (ValueError, TypeError):
+                avg = 0.0
+                
         return jsonify({'average_rating': avg}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in get_organizer_rating: {e}")
+        return jsonify({'error': str(e), 'average_rating': 0.0}), 500
 
 
 
@@ -1639,8 +1664,76 @@ def get_event(event_id):
         print(f"Error in get_event: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/user_promotions', methods=['POST'])
+def add_user_promotion():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        reward_type = data.get('reward_type')
+
+        if not user_id or not reward_type:
+            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
+
+        cursor = mydb.cursor()
+        cursor.execute("""
+            INSERT INTO user_promotions (user_id, reward_type, active)
+            VALUES (%s, %s, 1)
+        """, (user_id, reward_type))
+        mydb.commit()
+        return jsonify({'message': 'Promocja została dodana'}), 201
+    except Exception as e:
+        print(f"Błąd w add_user_promotion: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user_promotions/check', methods=['GET'])
+def check_user_promotion():
+    try:
+        user_id = request.args.get('user_id')
+        reward_type = request.args.get('reward_type')
+
+        if not user_id or not reward_type:
+            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
+
+        cursor = mydb.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT COUNT(*) AS total FROM user_promotions 
+            WHERE user_id = %s AND reward_type = %s AND active = 1
+        """, (user_id, reward_type))
+        result = cursor.fetchone()
+
+        return jsonify({'has_promotion': result['total'] > 0}), 200
+    except Exception as e:
+        print(f"Błąd w check_user_promotion: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user_promotions/deactivate', methods=['POST'])
+def deactivate_promotion():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        reward_type = data.get('reward_type')
+
+        if not user_id or not reward_type:
+            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
+
+        cursor = mydb.cursor()
+        cursor.execute("""
+            UPDATE user_promotions
+            SET active = 0
+            WHERE user_id = %s AND reward_type = %s AND active = 1
+        """, (user_id, reward_type))
+        mydb.commit()
+
+        return jsonify({'message': 'Promocja została dezaktywowana'}), 200
+
+    except Exception as e:
+        print(f"Błąd przy dezaktywacji promocji: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     ip = get_local_ip()
     app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
                      '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
+
+    # app.run(host='0.0.0.0', port=5000, debug=True)
