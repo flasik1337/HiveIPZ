@@ -440,6 +440,25 @@ class _EventPageState extends State<EventPage> {
           );
         });
       } else {
+        final isBanned = await DatabaseHelper.isUserBanned(currentEvent.id, userId!);
+        if (isBanned) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Brak dostępu'),
+              content: const Text(
+                'Zostałeś zablokowany przez organizatora tego wydarzenia i nie możesz dołączyć.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         // Sprawdź limit uczestników
         if (currentEvent.maxParticipants != -1 &&
             currentEvent.registeredParticipants >=
