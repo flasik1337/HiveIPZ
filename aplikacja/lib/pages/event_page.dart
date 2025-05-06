@@ -62,7 +62,16 @@ class _EventPageState extends State<EventPage> {
     _fetchEvent();
     _initializeUser();
     _loadRating();
+    _loadUserId();
   }
+
+  Future<void> _loadUserId() async {
+    final id = await DatabaseHelper.getUserIdFromToken();
+    setState(() {
+      userId = id;
+    });
+  }
+
 
   void _addToGoogleCalendar() {
     final calendarEvent = calendar.Event(
@@ -429,6 +438,12 @@ class _EventPageState extends State<EventPage> {
 
   Future<void> _joinOrLeaveEvent() async {
     try {
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Musisz być zalogowany, aby dołączyć do wydarzenia')),
+        );
+        return;
+      }
       if (isUserJoined) {
         // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
