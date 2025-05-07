@@ -2,7 +2,7 @@ import smtplib
 from email.mime.text import MIMEText
 from flask import Flask, request, jsonify, send_from_directory, redirect, session
 from flask_cors import CORS
-import mysql.connector
+from flask_socketio import SocketIO, emit, join_room, leave_room # Dodano dla SocketIO
 from mysql.connector import Error
 import secrets
 from dotenv import load_dotenv
@@ -16,6 +16,8 @@ import json
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from requests_oauthlib import OAuth1Session
+import qrcode
+from io import BytesIO
 
 
 load_dotenv()
@@ -49,6 +51,7 @@ def get_connection():
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*", path="/chat") # Dodano path="/chat" dla prawidłowej ścieżki
 
 #Konfiguracja połączenia z bazą danych
 mydb = mysql.connector.connect(
@@ -382,13 +385,23 @@ def update_user(user_id):
 
 # ------------------- ZAPISYWANIE OBRAZU NA SERWER -------------------
 @app.route('/upload_image', methods=['POST'])
-def upload_image():
+def upload_image(): # Corrected function definition
     if 'image' not in request.files:
         return jsonify({'error': 'Brak pliku w żądaniu'}), 400
 
     file = request.files['image']
     if file.filename == '':
         return jsonify({'error': 'Nie wybrano pliku'}), 400
+
+    # Ensure UPLOAD_FOLDER is configured
+    if 'UPLOAD_FOLDER' not in app.config:
+        # Create a default UPLOAD_FOLDER if not set, or handle error
+        # Assuming 'uploads' as a sensible default relative to the app's root
+        upload_folder_path = os.path.join(app.root_path, 'uploads')
+        app.config['UPLOAD_FOLDER'] = upload_folder_path
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+
 
     # Zapisz plik w folderze 'uploads/'
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
@@ -397,9 +410,6 @@ def upload_image():
     return jsonify({'message': 'Plik zapisany', 'file_path': file_path}), 200
 
 
-
-
-    
 
 
 @app.route('/uploads/<filename>')
@@ -584,6 +594,22 @@ def join_event(event_id):
             cursor.execute(sql_update_participants, (event_id,))
 
             mydb.commit()
+
+            ticket_data = {
+                'event_name': event['name'],
+                'event_location': event['location'],
+                'event_date': event['start_date'].strftime('%Y-%m-%d %H:%M'),
+                'ticket_number': ticket_number,
+                'user_name': user.get('imie', ''),
+                'user_surname': user.get('nazwisko', ''),
+                'nickName': user.get('nickName', ''),
+                'status': 'active',
+                'price': ticket_price,
+                'purchase_date': purchase_date
+            }
+
+            send_ticket_email(user['email'], f"Bilet na wydarzenie: {event['name']}",
+                              generate_ticket_email(ticket_data))
 
             return jsonify({
                 'message': 'Zapisano użytkownika na wydarzenie',
@@ -1295,11 +1321,6 @@ def has_rated(organizer_id):
         token = token.split(" ")[1]
 
         cursor = mydb.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE token = %s", (token,))
-        user = cursor.fetchone()
-        if not user:
-            return jsonify({'error': 'Nieprawidłowy token'}), 401
-
         cursor.execute("""
             SELECT COUNT(*) AS total FROM organizer_ratings
             WHERE organizer_id = %s AND rated_by_user_id = %s
@@ -1664,47 +1685,91 @@ def get_event(event_id):
         print(f"Error in get_event: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/user_promotions', methods=['POST'])
-def add_user_promotion():
+# Obsługa czatu WebSocket
+@socketio.on('connect', namespace='/chat')
+def handle_connect():
+    user_id = request.args.get('userId')
+    event_id = request.args.get('eventId') # Lub w inny sposób przekazujesz event_id
+    if not user_id or not event_id:
+        print(f"Połączenie: Brak userId lub eventId. userId: {user_id}, eventId: {event_id}")
+        return False # Odrzuć połączenie, jeśli brakuje parametrów
+    room = f"event_{event_id}"
+    join_room(room)
+    print(f"Użytkownik {user_id} połączył się z czatem wydarzenia {event_id}, pokój {room}")
+    # Wczytaj historię wiadomości
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
-        reward_type = data.get('reward_type')
-
-        if not user_id or not reward_type:
-            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
-
-        cursor = mydb.cursor()
-        cursor.execute("""
-            INSERT INTO user_promotions (user_id, reward_type, active)
-            VALUES (%s, %s, 1)
-        """, (user_id, reward_type))
-        mydb.commit()
-        return jsonify({'message': 'Promocja została dodana'}), 201
+        db = get_connection()
+        cursor = db.cursor(dictionary=True)
+        sql = """
+            SELECT ecm.user_id, u.nickName as nickname, ecm.message_content as content, ecm.timestamp
+            FROM event_chat_messages ecm
+            JOIN users u ON ecm.user_id = u.id
+            WHERE ecm.event_id = %s
+            ORDER BY ecm.timestamp ASC
+        """
+        cursor.execute(sql, (event_id,))
+        messages = cursor.fetchall()
+        for msg in messages:
+            if isinstance(msg['timestamp'], datetime):
+                msg['timestamp'] = msg['timestamp'].isoformat()
+        # Emituj historię jako obiekt z  'type' i 'data'
+        emit('message_history', {'type': 'history', 'data': messages}, room=request.sid)
+        cursor.close()
     except Exception as e:
-        print(f"Błąd w add_user_promotion: {e}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Błąd podczas wczytywania historii wiadomości: {e}")
 
-@app.route('/user_promotions/check', methods=['GET'])
-def check_user_promotion():
+@socketio.on('disconnect', namespace='/chat')
+def handle_disconnect():
+    user_id = request.args.get('userId') # Zakładając, że chcesz to logować
+    event_id = request.args.get('eventId')
+    room = f"event_{event_id}"
+    leave_room(room)
+    print(f"Użytkownik {user_id} rozłączył się z czatem wydarzenia {event_id}, pokój {room}")
+
+@socketio.on('send_message', namespace='/chat')
+def handle_send_message(payload):
+    data = payload
+    if isinstance(payload, dict) and 'event' in payload and payload['event'] == 'send_message' and 'data' in payload:
+        data = payload['data']
+
+    event_id = data.get('event_id')
+    user_id = data.get('user_id')
+    content = data.get('content')
+    room = f"event_{event_id}"
+
+    if not all([event_id, user_id, content]):
+        print(f"Wyślij wiadomość: Brak danych. Wydarzenie: {event_id}, Użytkownik: {user_id}, Treść: {content}")
+        return
+
+    print(f"Wiadomość od użytkownika {user_id} w wydarzeniu {event_id} (pokój {room}): {content}")
+
     try:
-        user_id = request.args.get('user_id')
-        reward_type = request.args.get('reward_type')
+        db = get_connection()
+        cursor = db.cursor()
+        sql = """
+            INSERT INTO event_chat_messages (event_id, user_id, message_content, timestamp)
+            VALUES (%s, %s, %s, NOW())
+        """
+        cursor.execute(sql, (event_id, user_id, content))
+        db.commit()
 
-        if not user_id or not reward_type:
-            return jsonify({'error': 'Brakuje user_id lub reward_type'}), 400
+        cursor.execute("SELECT nickName FROM users WHERE id = %s", (user_id,))
+        user_record = cursor.fetchone()
+        nickname = user_record[0] if user_record else "Nieznany użytkownik"
+        cursor.close()
 
-        cursor = mydb.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT COUNT(*) AS total FROM user_promotions 
-            WHERE user_id = %s AND reward_type = %s AND active = 1
-        """, (user_id, reward_type))
-        result = cursor.fetchone()
-
-        return jsonify({'has_promotion': result['total'] > 0}), 200
+        message_to_broadcast = {
+            'user_id': user_id,
+            'nickname': nickname,
+            'content': content,
+            'event_id': event_id,
+            'timestamp': datetime.now().isoformat()
+        }
+        emit('new_message', {'type': 'new_message', 'data': message_to_broadcast}, room=room, namespace='/chat')
     except Exception as e:
-        print(f"Błąd w check_user_promotion: {e}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Błąd podczas zapisywania lub rozgłaszania wiadomości: {e}")
+        emit('message_error', {'error': str(e)}, room=request.sid)
+
 
 @app.route('/user_promotions/deactivate', methods=['POST'])
 def deactivate_promotion():
@@ -1731,9 +1796,177 @@ def deactivate_promotion():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/process_payment', methods=['POST'])
+def process_payment():
+    try:
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith("Bearer "):
+            return jsonify({'error': 'Brak tokenu lub niepoprawny token'}), 401
+
+        token = token.split(" ")[1]
+        cursor = mydb.cursor(dictionary=True)
+
+        # Pobieranie user_id z tokenu
+        sql = "SELECT id FROM users WHERE token = %s"
+        cursor.execute(sql, (token,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({'error': 'Nieprawidłowy token'}), 401
+
+        user_id = user['id']
+        data = request.get_json()
+
+        # Walidacja danych płatności
+        required_fields = ['id', 'amount', 'title', 'event_id', 'status', 'payment_method']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Brak wymaganego pola: {field}'}), 400
+
+        # Przygotowanie danych do zapisu
+        payment_id = data['id']
+        amount = data['amount']
+        title = data['title']
+        event_id = data['event_id']
+        status = data['status']
+        payment_method = data['payment_method']
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # Zapis płatności do bazy danych
+        sql_insert_payment = """
+        INSERT INTO payments (id, amount, title, user_id, event_id, status, created_at, payment_method)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(sql_insert_payment, (
+            payment_id,
+            amount,
+            title,
+            user_id,
+            event_id,
+            status,
+            current_time,
+            payment_method
+        ))
+
+        # Aktualizacja połączenia między tabelami płatności i biletów
+        if status == 'COMPLETED':
+            # Znajdź bilet powiązany z wydarzeniem i użytkownikiem
+            sql_find_ticket = """
+            SELECT id FROM tickets
+            WHERE user_id = %s AND event_id = %s
+            ORDER BY purchase_date DESC
+            LIMIT 1
+            """
+            cursor.execute(sql_find_ticket, (user_id, event_id))
+            ticket = cursor.fetchone()
+
+            if ticket:
+                # Aktualizuj bilet o informacje o płatności
+                sql_update_ticket = """
+                UPDATE tickets
+                SET payment_id = %s
+                WHERE id = %s
+                """
+                cursor.execute(sql_update_ticket, (payment_id, ticket['id']))
+
+        mydb.commit()
+        return jsonify({'message': 'Płatność została zapisana pomyślnie', 'payment_id': payment_id}), 201
+
+    except mysql.connector.Error as err:
+        mydb.rollback()
+        print(f"Błąd MySQL podczas przetwarzania płatności: {err}")
+        return jsonify({'error': str(err)}), 500
+    except Exception as e:
+        mydb.rollback()
+        print(f"Błąd podczas przetwarzania płatności: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/events/<event_id>/is_banned', methods=['GET'])
+def check_user_banned(event_id):
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Brak user_id'}), 400
+
+        cursor = mydb.cursor(dictionary=True)
+        sql = "SELECT * FROM event_bans WHERE event_id = %s AND user_id = %s"
+        cursor.execute(sql, (event_id, user_id))
+        banned = cursor.fetchone()
+
+        return jsonify({'is_banned': banned is not None}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def generate_ticket_email(ticket):
+    base64_qr = generate_qr_base64(ticket['ticket_number'])
+
+    return f"""
+    <html>
+      <body style="font-family: sans-serif; padding: 20px; background: #f9f9f9;">
+        <div style="max-width: 500px; margin: auto; background: #fff; border-radius: 16px; box-shadow: 0 0 8px rgba(0,0,0,0.1); padding: 20px;">
+
+          <h2 style="text-align: center; color: #222;">Bilet na wydarzenie</h2>
+          <h3 style="text-align: center;">{ticket['event_name']}</h3>
+
+          <div style="text-align: center; margin: 20px 0;">
+            <img src="data:image/png;base64,{base64_qr}" width="180" alt="QR Kod" />
+          </div>
+
+          <p style="text-align: center; font-size: 14px; color: #666;">
+            Numer biletu: <strong>{ticket['ticket_number']}</strong>
+          </p>
+
+          <hr />
+
+          <h4 style="color: #f0a500;">WYDARZENIE</h4>
+          <p><strong>Miejsce:</strong> {ticket['event_location']}</p>
+          <p><strong>Data:</strong> {ticket['event_date']}</p>
+
+          <h4 style="color: #f0a500;">WŁAŚCICIEL</h4>
+          <p><strong>Imię i nazwisko:</strong> {ticket['user_name']} {ticket['user_surname']}</p>
+          <p><strong>Nazwa użytkownika:</strong> {ticket['nickName']}</p>
+
+          <h4 style="color: #f0a500;">INFORMACJE O BILECIE</h4>
+          <p><strong>Status:</strong> {ticket['status']}</p>
+          <p><strong>Cena:</strong> {ticket['price']} zł</p>
+          <p><strong>Data zakupu:</strong> {ticket['purchase_date']}</p>
+
+          <p style="margin-top: 30px; font-size: 12px; color: #999;">
+            Nie udostępniaj biletu osobom trzecim. Kod QR jest unikalny.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+
+
+def send_ticket_email(email, subject, html_content):
+    msg = MIMEText(html_content, 'html', _charset='utf-8')
+    msg['Subject'] = subject
+    msg['From'] = MAIL_USERNAME
+    msg['To'] = email
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print("Wysłano mail z biletem do:", email)
+    except Exception as e:
+        print("Błąd przy wysyłaniu biletu:", e)
+
+
+def generate_qr_base64(data):
+    qr = qrcode.make(data)
+    buffer = BytesIO()
+    qr.save(buffer, format="PNG")
+    base64_qr = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return base64_qr
+    
 if __name__ == '__main__':
     ip = get_local_ip()
-    app.run(host=f'{ip}', port=5000,ssl_context=('/etc/letsencrypt/live/vps.jakosinski.pl/fullchain.pem',
-                     '/etc/letsencrypt/live/vps.jakosinski.pl/privkey.pem'), debug=True)
-
-    # app.run(host='0.0.0.0', port=5000, debug=True)
+    print(f"Starting server on {ip}:5000 or 0.0.0.0:5000")
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
