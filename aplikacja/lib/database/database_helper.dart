@@ -853,4 +853,17 @@ class DatabaseHelper {
       throw Exception('Nie udało się dezaktywować promocji');
     }
   }
+
+  static Future<bool> isUserBanned(String eventId, String userId) async {
+    final url = Uri.parse('$link/events/$eventId/is_banned?user_id=$userId');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['is_banned'] == true;
+    } else {
+      throw Exception('Błąd podczas sprawdzania statusu bana');
+    }
+  }
+
 }
