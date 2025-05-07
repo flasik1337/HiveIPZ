@@ -62,7 +62,16 @@ class _EventPageState extends State<EventPage> {
     _fetchEvent();
     _initializeUser();
     _loadRating();
+    _loadUserId();
   }
+
+  Future<void> _loadUserId() async {
+    final id = await DatabaseHelper.getUserIdFromToken();
+    setState(() {
+      userId = id;
+    });
+  }
+
 
   void _addToGoogleCalendar() {
     final calendarEvent = calendar.Event(
@@ -429,6 +438,12 @@ class _EventPageState extends State<EventPage> {
 
   Future<void> _joinOrLeaveEvent() async {
     try {
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Musisz być zalogowany, aby dołączyć do wydarzenia')),
+        );
+        return;
+      }
       if (isUserJoined) {
         // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
@@ -440,6 +455,25 @@ class _EventPageState extends State<EventPage> {
           );
         });
       } else {
+        final isBanned = await DatabaseHelper.isUserBanned(currentEvent.id, userId!);
+        if (isBanned) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Brak dostępu'),
+              content: const Text(
+                'Zostałeś zablokowany przez organizatora tego wydarzenia i nie możesz dołączyć.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         // Sprawdź limit uczestników
         if (currentEvent.maxParticipants != -1 &&
             currentEvent.registeredParticipants >=
