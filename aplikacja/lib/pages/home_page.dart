@@ -14,6 +14,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../pages/qr_scanner.dart';
+
+
 
 import '../widgets/sorting_modal_bottom_sheet.dart';
 
@@ -446,7 +449,32 @@ class _HomePageState extends State<HomePage> {
                     ),
                   )
                 ],
-              ))
+              )),
+          Positioned(
+            top: 30,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Column(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner, size: 40),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const QrScannerPage()),
+                      );
+                    },
+                  ),
+                  const Text(
+                    'Skanuj kod QR',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: !isSearching

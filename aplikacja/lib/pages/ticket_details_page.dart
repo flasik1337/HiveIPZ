@@ -48,7 +48,7 @@ class TicketDetailsPage extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.all(16),
                 child: QrImageView(
-                  data: ticket.ticketNumber,
+                  data: "ticket:${ticket.ticketNumber}",
                   version: QrVersions.auto,
                   size: 200.0,
                   backgroundColor: Colors.white,

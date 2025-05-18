@@ -27,6 +27,8 @@ dependencies:
   url_launcher: ^6.2.5
   intl: ^0.18.1
   qr_flutter: ^4.1.0
+  mobile_scanner: ^3.3.0
+
 
 dev_dependencies:
   flutter_test:
