@@ -9,6 +9,8 @@ import '../widgets/payment_dialog.dart';
 import '../widgets/comment_section.dart';
 import '../widgets/event_chat_widget.dart'; // Added for event chat
 import 'package:add_2_calendar/add_2_calendar.dart' as calendar;
+import '../widgets/qr_display_dialog.dart';
+
 
 /// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
@@ -20,6 +22,9 @@ class EventPage extends StatefulWidget {
   @override
   _EventPageState createState() => _EventPageState();
 }
+
+
+
 
 Widget _buildActionButton(String text, VoidCallback onPressed) {
   return SizedBox(
@@ -56,6 +61,9 @@ class _EventPageState extends State<EventPage> {
   int? _currentUserIdInt; // For chat widget
   double? organizerRating;
   bool ratingSent = false;
+  Map<String, dynamic>? currentUser;
+
+
 
   @override
   void initState() {
@@ -65,6 +73,7 @@ class _EventPageState extends State<EventPage> {
     _initializeUser();
     _loadRating();
     _loadUserId();
+    _fetchCurrentUser();
   }
 
   Future<void> _loadUserId() async {
@@ -73,6 +82,25 @@ class _EventPageState extends State<EventPage> {
       userId = id;
     });
   }
+
+  Future<void> _fetchCurrentUser() async {
+    final token = await DatabaseHelper.getToken(); // ⬅️ pobierz token z pamięci
+    if (token == null) {
+      print('Brak tokenu - użytkownik niezalogowany.');
+      return;
+    }
+    try {
+      final user = await DatabaseHelper.getUserByToken(token);
+      setState(() {
+        currentUser = user;
+      });
+    } catch (e) {
+      print('Błąd pobierania użytkownika: $e');
+    }
+  }
+
+
+
 
 
   void _addToGoogleCalendar() {
@@ -572,12 +600,32 @@ class _EventPageState extends State<EventPage> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            _showCommentsModal(context);
-          },
-          backgroundColor: HiveColors.main,
-          child: const Icon(Icons.chat, color: Colors.black),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isUserOwner) ...[
+              FloatingActionButton(
+                heroTag: 'qr',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => QrDisplayDialog(eventId: widget.event.id),
+                  );
+                },
+                backgroundColor: HiveColors.main,
+                child: const Icon(Icons.qr_code, color: Colors.black),
+              ),
+              const SizedBox(height: 16),
+            ],
+            FloatingActionButton(
+              heroTag: 'chat',
+              onPressed: () {
+                _showCommentsModal(context);
+              },
+              backgroundColor: HiveColors.main,
+              child: const Icon(Icons.chat, color: Colors.black),
+            ),
+          ],
         ),
         body: TabBarView( // Added TabBarView
           children: [
