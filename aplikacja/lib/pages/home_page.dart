@@ -458,7 +458,7 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.qr_code_scanner, size: 40),
+                    icon: const Icon(Icons.qr_code_scanner, size: 40, color:HiveColors.main),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -469,7 +469,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const Text(
                     'Skanuj kod QR',
-                    style: TextStyle(fontSize: 14),
+                    style: TextStyle(fontSize: 14, color:HiveColors.main),
+
                   ),
                 ],
               ),
