@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  web_socket_channel: ^2.4.0 # Added for WebSocket communication
   image_picker: ^1.1.2
   permission_handler: ^10.3.0
   path_provider: ^2.0.11
@@ -21,11 +22,13 @@ dependencies:
   flutter_svg: ^2.0.17
   cupertino_icons: ^1.0.8
   add_2_calendar: ^2.1.0
-  flutter_facebook_auth: ^7.1.2
+#  google_sign_in: ^6.3.0
+  flutter_facebook_auth: ^6.0.4
   url_launcher: ^6.2.5
   intl: ^0.18.1
   qr_flutter: ^4.1.0
-  flutter_local_notifications: ^19.1.0
+  mobile_scanner: ^3.3.0
+
 
 dev_dependencies:
   flutter_test:

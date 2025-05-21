@@ -7,7 +7,10 @@ import '../styles/text_styles.dart';
 import '../styles/hive_colors.dart';
 import '../widgets/payment_dialog.dart';
 import '../widgets/comment_section.dart';
+import '../widgets/event_chat_widget.dart'; // Added for event chat
 import 'package:add_2_calendar/add_2_calendar.dart' as calendar;
+import '../widgets/qr_display_dialog.dart';
+
 
 /// Strona realizująca widok szczegółowy wydarzenia
 class EventPage extends StatefulWidget {
@@ -19,6 +22,9 @@ class EventPage extends StatefulWidget {
   @override
   _EventPageState createState() => _EventPageState();
 }
+
+
+
 
 Widget _buildActionButton(String text, VoidCallback onPressed) {
   return SizedBox(
@@ -52,8 +58,12 @@ class _EventPageState extends State<EventPage> {
   bool isUserJoined = false; // Czy użytkownik jest zapisany na wydarzenie
   bool isUserOwner = false; // Czy użytkownik jest właścicielem wydarzenia?
   String? userId; // Przechowywanie userId
+  int? _currentUserIdInt; // For chat widget
   double? organizerRating;
   bool ratingSent = false;
+  Map<String, dynamic>? currentUser;
+
+
 
   @override
   void initState() {
@@ -62,7 +72,36 @@ class _EventPageState extends State<EventPage> {
     _fetchEvent();
     _initializeUser();
     _loadRating();
+    _loadUserId();
+    _fetchCurrentUser();
   }
+
+  Future<void> _loadUserId() async {
+    final id = await DatabaseHelper.getUserIdFromToken();
+    setState(() {
+      userId = id;
+    });
+  }
+
+  Future<void> _fetchCurrentUser() async {
+    final token = await DatabaseHelper.getToken(); // ⬅️ pobierz token z pamięci
+    if (token == null) {
+      print('Brak tokenu - użytkownik niezalogowany.');
+      return;
+    }
+    try {
+      final user = await DatabaseHelper.getUserByToken(token);
+      setState(() {
+        currentUser = user;
+      });
+    } catch (e) {
+      print('Błąd pobierania użytkownika: $e');
+    }
+  }
+
+
+
+
 
   void _addToGoogleCalendar() {
     final calendarEvent = calendar.Event(
@@ -214,14 +253,19 @@ class _EventPageState extends State<EventPage> {
   Future<void> _initializeUser() async {
     try {
       userId = await DatabaseHelper.getUserIdFromToken();
+      if (userId != null) {
+        _currentUserIdInt = int.tryParse(userId!);
+      }
       await _checkUserJoinedStatus();
       await _checkIfUserIsOwner();
 
       final hasRated =
           await DatabaseHelper.hasUserRated(currentEvent.userId.toString());
-      setState(() {
-        ratingSent = hasRated;
-      });
+      if (mounted) {
+        setState(() {
+          ratingSent = hasRated;
+        });
+      }
     } catch (e) {
       print('Błąd podczas inicjalizacji użytkownika: $e');
     }
@@ -429,6 +473,12 @@ class _EventPageState extends State<EventPage> {
 
   Future<void> _joinOrLeaveEvent() async {
     try {
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Musisz być zalogowany, aby dołączyć do wydarzenia')),
+        );
+        return;
+      }
       if (isUserJoined) {
         // Logika wypisywania
         await DatabaseHelper.leaveEvent(currentEvent.id);
@@ -440,6 +490,25 @@ class _EventPageState extends State<EventPage> {
           );
         });
       } else {
+        final isBanned = await DatabaseHelper.isUserBanned(currentEvent.id, userId!);
+        if (isBanned) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Brak dostępu'),
+              content: const Text(
+                'Zostałeś zablokowany przez organizatora tego wydarzenia i nie możesz dołączyć.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         // Sprawdź limit uczestników
         if (currentEvent.maxParticipants != -1 &&
             currentEvent.registeredParticipants >=
@@ -509,263 +578,316 @@ class _EventPageState extends State<EventPage> {
   Widget build(BuildContext context) {
     const double photoHeight = 300;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showCommentsModal(context);
-        },
-        backgroundColor: HiveColors.main,
-        child: const Icon(Icons.chat, color: Colors.black),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Image.asset(
-                currentEvent.imagePath,
-                height: photoHeight,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-              Container(
-                height: photoHeight,
-                decoration: BoxDecoration(
-                  gradient: AppGradients.eventPageGradient,
-                ),
-              ),
-              Positioned(
-                bottom: 16,
-                left: 16,
-                child: Text(
-                  currentEvent.name,
-                  textAlign: TextAlign.center,
-                  style: HiveTextStyles.title,
-                ),
-              ),
-              Positioned(
-                top: 16,
-                right: 16,
-                child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (value) {
-                    if (value == 'report') {
-                      _showReportDialog();
-                    }
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'report',
-                      child: ListTile(
-                        leading:
-                            Icon(Icons.report_gmailerrorred, color: Colors.red),
-                        title: Text('Zgłoś wydarzenie'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (organizerRating != null)
-                Positioned(
-                  bottom: 0,
-                  left: 16,
-                  child: Text(
-                    'Ocena organizatora: ⭐ ${organizerRating!.toStringAsFixed(1)} / 5',
-                    style: const TextStyle(fontSize: 14, color: Colors.white),
-                  ),
-                ),
+    return DefaultTabController( // Added DefaultTabController
+      length: 2, // Number of tabs: Details and Chat
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black, // Or your theme's app bar color
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text(currentEvent.name, style: HiveTextStyles.title.copyWith(fontSize: 20)),
+          bottom: const TabBar(
+            indicatorColor: HiveColors.main,
+            labelColor: HiveColors.main,
+            unselectedLabelColor: Colors.grey,
+            tabs: [
+              Tab(text: 'Szczegóły'),
+              Tab(text: 'Czat'),
             ],
           ),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              '${currentEvent.location}  |  ${currentEvent.type}\n${currentEvent.startDate.day}.${currentEvent.startDate.month}.${currentEvent.startDate.year}',
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.white,
+        ),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isUserOwner) ...[
+              FloatingActionButton(
+                heroTag: 'qr',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => QrDisplayDialog(eventId: widget.event.id),
+                  );
+                },
+                backgroundColor: HiveColors.main,
+                child: const Icon(Icons.qr_code, color: Colors.black),
               ),
+              const SizedBox(height: 16),
+            ],
+            FloatingActionButton(
+              heroTag: 'chat',
+              onPressed: () {
+                _showCommentsModal(context);
+              },
+              backgroundColor: HiveColors.main,
+              child: const Icon(Icons.chat, color: Colors.black),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              currentEvent.cena > 0
-                  ? 'Cena wejścia: ${currentEvent.cena} zł'
-                  : 'Wejście darmowe',
-              style: HiveTextStyles.regular,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              currentEvent.description,
-              style: HiveTextStyles.regular,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              currentEvent.maxParticipants != -1
-                  ? '${currentEvent.registeredParticipants} / ${currentEvent.maxParticipants}'
-                  : 'Wydarzenie otwarte, ${currentEvent.registeredParticipants} uczestników',
-              style: HiveTextStyles.regular,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton.icon(
-              icon: const Icon(
-                Icons.calendar_today,
-                color: Colors.black,
-              ),
-              label: const Text('Dodaj do Google Kalendarza',
-                  style: TextStyle(color: Colors.black)),
-              onPressed: _addToGoogleCalendar,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC300),
-                disabledBackgroundColor: const Color(0xFFFFC300),
-                // zachowaj żółty nawet jak disabled
-                disabledForegroundColor: Colors.black.withOpacity(0.5),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-          ),
-          if (currentEvent.startDate.isBefore(DateTime.now()) &&
-              isUserJoined &&
-              !isUserOwner)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ElevatedButton.icon(
-                icon: Icon(
-                  Icons.star,
-                  color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
-                ),
-                label: Text(
-                  ratingSent ? 'Dziękujemy za ocenę!' : 'Oceń organizatora',
-                  style: TextStyle(
-                    color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
-                  ),
-                ),
-                onPressed: ratingSent ? null : _showRatingDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFC300),
-                  disabledBackgroundColor: const Color(0xFFFFC300),
-                  // zachowaj żółty nawet jak disabled
-                  disabledForegroundColor: Colors.black.withOpacity(0.5),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-          if (!(currentEvent.startDate.isBefore(DateTime.now()) &&
-              isUserJoined &&
-              !isUserOwner))
-            Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-          // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
-          if (isUserOwner)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ],
+        ),
+        body: TabBarView( // Added TabBarView
+          children: [
+            // Details Tab
+            SingleChildScrollView( // Made the details scrollable
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildActionButton('Edytuj wydarzenie', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditEventPage(
-                          event: currentEvent,
-                          onSave: (updatedEvent) {
-                            if (!mounted) return;
-                            setState(() {
-                              currentEvent = updatedEvent;
-                            });
-                          },
+                  Stack(
+                    children: [
+                      Image.asset(
+                        currentEvent.imagePath,
+                        height: photoHeight,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                      Container(
+                        height: photoHeight,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.eventPageGradient,
                         ),
                       ),
-                    );
-                  }),
-                  const SizedBox(height: 12),
-                  _buildActionButton(
-                      currentEvent.isPromoted
-                          ? 'Usuń promocję'
-                          : 'Promuj wydarzenie', () async {
-                    try {
-                      final updated = currentEvent.copyWith(
-                          isPromoted: !currentEvent.isPromoted);
-                      await DatabaseHelper.updateEvent(
-                        currentEvent.id,
-                        {
-                          'name': currentEvent.name,
-                          'location': currentEvent.location,
-                          'description': currentEvent.description,
-                          'type': currentEvent.type,
-                          'start_date':
-                              currentEvent.startDate.toIso8601String(),
-                          'max_participants': currentEvent.maxParticipants,
-                          'registered_participants':
-                              currentEvent.registeredParticipants,
-                          'image': currentEvent.imagePath,
-                          'cena': currentEvent.cena,
-                          'is_promoted': updated.isPromoted,
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        child: Text(
+                          currentEvent.name,
+                          textAlign: TextAlign.center,
+                          style: HiveTextStyles.title,
+                        ),
+                      ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          onSelected: (value) {
+                            if (value == 'report') {
+                              _showReportDialog();
+                            }
+                          },
+                          itemBuilder: (BuildContext context) =>
+                              <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'report',
+                              child: ListTile(
+                                leading:
+                                    Icon(Icons.report_gmailerrorred, color: Colors.red),
+                                title: Text('Zgłoś wydarzenie'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (organizerRating != null)
+                        Positioned(
+                          bottom: 0,
+                          left: 16,
+                          child: Text(
+                            'Ocena organizatora: ⭐ ${organizerRating!.toStringAsFixed(1)} / 5',
+                            style: const TextStyle(fontSize: 14, color: Colors.white),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      '${currentEvent.location}  |  ${currentEvent.type}\n${currentEvent.startDate.day}.${currentEvent.startDate.month}.${currentEvent.startDate.year}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      currentEvent.cena > 0
+                          ? 'Cena wejścia: ${currentEvent.cena} zł'
+                          : 'Wejście darmowe',
+                      style: HiveTextStyles.regular,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      currentEvent.description,
+                      style: HiveTextStyles.regular,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      currentEvent.maxParticipants != -1
+                          ? '${currentEvent.registeredParticipants} / ${currentEvent.maxParticipants}'
+                          : 'Wydarzenie otwarte, ${currentEvent.registeredParticipants} uczestników',
+                      style: HiveTextStyles.regular,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(
+                        Icons.calendar_today,
+                        color: Colors.black,
+                      ),
+                      label: const Text('Dodaj do Google Kalendarza',
+                          style: TextStyle(color: Colors.black)),
+                      onPressed: _addToGoogleCalendar,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFC300),
+                        disabledBackgroundColor: const Color(0xFFFFC300),
+                        // zachowaj żółty nawet jak disabled
+                        disabledForegroundColor: Colors.black.withOpacity(0.5),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (currentEvent.startDate.isBefore(DateTime.now()) &&
+                      isUserJoined &&
+                      !isUserOwner)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: ElevatedButton.icon(
+                        icon: Icon(
+                          Icons.star,
+                          color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
+                        ),
+                        label: Text(
+                          ratingSent ? 'Dziękujemy za ocenę!' : 'Oceń organizatora',
+                          style: TextStyle(
+                            color: Colors.black.withOpacity(ratingSent ? 0.5 : 1.0),
+                          ),
+                        ),
+                        onPressed: ratingSent ? null : _showRatingDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFC300),
+                          disabledBackgroundColor: const Color(0xFFFFC300),
+                          // zachowaj żółty nawet jak disabled
+                          disabledForegroundColor: Colors.black.withOpacity(0.5),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!(currentEvent.startDate.isBefore(DateTime.now()) &&
+                      isUserJoined &&
+                      !isUserOwner))
+                    Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+                  // Wyświetl przycisk "Edytuj wydarzenie" tylko, jeśli użytkownik jest właścicielem wydarzenia
+                  if (isUserOwner)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildActionButton('Edytuj wydarzenie', () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditEventPage(
+                                  event: currentEvent,
+                                  onSave: (updatedEvent) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      currentEvent = updatedEvent;
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 12),
+                          _buildActionButton(
+                              currentEvent.isPromoted
+                                  ? 'Usuń promocję'
+                                  : 'Promuj wydarzenie', () async {
+                            try {
+                              final updated = currentEvent.copyWith(
+                                  isPromoted: !currentEvent.isPromoted);
+                              await DatabaseHelper.updateEvent(
+                                currentEvent.id,
+                                {
+                                  'name': currentEvent.name,
+                                  'location': currentEvent.location,
+                                  'description': currentEvent.description,
+                                  'type': currentEvent.type,
+                                  'start_date':
+                                      currentEvent.startDate.toIso8601String(),
+                                  'max_participants': currentEvent.maxParticipants,
+                                  'registered_participants':
+                                      currentEvent.registeredParticipants,
+                                  'image': currentEvent.imagePath,
+                                  'cena': currentEvent.cena,
+                                  'is_promoted': updated.isPromoted,
+                                },
+                              );
+                              if (!mounted) return;
+                              setState(() {
+                                currentEvent = updated;
+                              });
+                              widget.onUpdate(updated);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Błąd: $e')),
+                              );
+                            }
+                          }),
+                          const SizedBox(height: 12),
+                          _buildActionButton('Zobacz uczestników', () {
+                            _showParticipantsModal(context);
+                          }),
+                        ],
+                      ),
+                    ),
+                  // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
+                  if (!isUserOwner)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _joinOrLeaveEvent();
                         },
-                      );
-                      if (!mounted) return;
-                      setState(() {
-                        currentEvent = updated;
-                      });
-                      widget.onUpdate(updated);
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Błąd: $e')),
-                      );
-                    }
-                  }),
-                  const SizedBox(height: 12),
-                  _buildActionButton('Zobacz uczestników', () {
-                    _showParticipantsModal(context);
-                  }),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFC300),
+                          disabledBackgroundColor: const Color(0xFFFFC300),
+                          // zachowaj żółty nawet jak disabled
+                          disabledForegroundColor: Colors.black.withOpacity(0.5),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          isUserJoined ? 'Wypisz się' : 'Zapisz się',
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-          // Wyświetl przycisk "Zapisz się / Wypisz się" tylko, jeśli użytkownik nie jest właścicielem wydarzenia
-          if (!isUserOwner)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                onPressed: () {
-                  _joinOrLeaveEvent();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFC300),
-                  disabledBackgroundColor: const Color(0xFFFFC300),
-                  // zachowaj żółty nawet jak disabled
-                  disabledForegroundColor: Colors.black.withOpacity(0.5),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  isUserJoined ? 'Wypisz się' : 'Zapisz się',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-            ),
-        ],
+            // Chat Tab
+            _currentUserIdInt != null
+              ? EventChatWidget(eventId: currentEvent.id.toString(), userId: _currentUserIdInt!)
+              : Center(child: CircularProgressIndicator()), // Show loader while userId is fetched
+          ],
+        ),
       ),
     );
   }
 }
+

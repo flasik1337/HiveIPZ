@@ -7,3 +7,6 @@ aplikacja/-PC_Kuba_ZS.flutter-plugins-dependencies
 aplikacja/android/gradle-HP_Kuba.properties
 aplikacja/pubspec-HP_Kuba.lock
 serwer/SerwerJVM/pom.xml
+serwer/Serwer2.0/instance/.env
+.idea/workspace-HP_Kuba.xml
+serwer/venv/lib64
