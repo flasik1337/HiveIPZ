@@ -261,17 +261,11 @@ void _completeLogin(String token, String userId) async {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      IconButton(
-                        icon: SvgPicture.asset('assets/facebook_icon.svg', width: 35, height: 35),
-                        onPressed: () {
-                          FacebookService.loginWithFacebook();
-                        },
-                      ),
                       const SizedBox(width: 10),
                       IconButton(
                         icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
                         onPressed: () {
-                          //var googleUser = GoogleService.signInWithGoogle();
+                          var googleUser = GoogleService.signInWithGoogle();
                         },
                       ),
                     ],

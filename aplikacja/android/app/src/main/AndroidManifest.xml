@@ -58,7 +58,7 @@
 <!--        Ikona do powiadomień -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/notification.png"/>
+            android:resource="@drawable/notification"/>
 
     </application>
     <!-- Required to query activities that can process text, see:
