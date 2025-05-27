@@ -1,12 +1,10 @@
 import 'package:Hive/pages/filtered_list_page.dart';
-import 'package:Hive/styles/hive_colors.dart';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../widgets/event_type_grid.dart';
 
 class EventFilterService {
-  static void filterEventsByQuery(
-      BuildContext context, List<Event> events, String query) {
+  static void filterEventsByQuery(BuildContext context, List<Event> events, String query) {
     query = query.trim().toLowerCase();
 
     if (query.isEmpty) {
@@ -14,93 +12,64 @@ class EventFilterService {
       return;
     }
 
-    final filteredEvents = events
-        .where((event) =>
-            event.name.toLowerCase().contains(query) ||
-            event.location.toLowerCase().contains(query))
-        .toList();
+    final filteredEvents = events.where((event) =>
+    event.name.toLowerCase().contains(query) ||
+        event.location.toLowerCase().contains(query)).toList();
 
     _navigateToFilteredPage(context, filteredEvents);
   }
 
-  static void filterEventsByType(
-      BuildContext context, List<Event> events, String typeFilter) {
-    final filteredEvents = events
-        .where((event) =>
-            event.type.toLowerCase().contains(typeFilter.toLowerCase()))
-        .toList();
+  static void filterEventsByType(BuildContext context, List<Event> events, String typeFilter) {
+    final filteredEvents = events.where((event) =>
+        event.type.toLowerCase().contains(typeFilter.toLowerCase())).toList();
 
     _navigateToFilteredPage(context, filteredEvents);
   }
 
-  static void filterEventsByPrice(BuildContext context, List<Event> events,
-      double priceBottom, double priceUp) {
-    final filteredEvents = events
-        .where((event) => event.cena >= priceBottom && event.cena <= priceUp)
-        .toList();
+  static void filterEventsByPrice(BuildContext context, List<Event> events, double priceBottom, double priceUp) {
+    final filteredEvents = events.where((event) =>
+    event.cena >= priceBottom && event.cena <= priceUp).toList();
 
     _navigateToFilteredPage(context, filteredEvents);
   }
 
-  static void filterEventsByDate(BuildContext context, List<Event> events,
-      DateTime dateBottom, DateTime dateUp) {
-    final filteredEvents = events
-        .where((event) =>
-            event.startDate.isAfter(dateBottom) &&
-            event.startDate.isBefore(dateUp))
-        .toList();
+  static void filterEventsByDate(BuildContext context, List<Event> events, DateTime dateBottom, DateTime dateUp) {
+    final filteredEvents = events.where((event) =>
+    event.startDate.isAfter(dateBottom) &&
+        event.startDate.isBefore(dateUp)).toList();
 
     _navigateToFilteredPage(context, filteredEvents);
   }
 
-  static filterEventsByParticipants(BuildContext context, List<Event> events,
-      {int maxParticipants = -1, int minParticipants = 0}) {
-    List<Event> filteredEvents = [];
-    if (maxParticipants == -1) {
-      filteredEvents = events
-          .where((event) =>
-              event.maxParticipants >= minParticipants ||
-              event.maxParticipants == -1)
-          .toList();
-    } else {
-      filteredEvents = events
-          .where((event) =>
-              event.maxParticipants <= maxParticipants &&
-              event.maxParticipants >= minParticipants)
-          .toList();
-    }
-
-    _navigateToFilteredPage(context, filteredEvents);
-  }
-
-  static void showLocationFilterDialog(
-      BuildContext context, List<Event> events) {
+  static void showLocationFilterDialog(BuildContext context, List<Event> events) {
     TextEditingController locationController = TextEditingController();
 
     showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-              title: const Text('Podaj wyszukiwaną lokalizację'),
-              content: TextField(
-                controller: locationController,
-                decoration: const InputDecoration(hintText: 'Lokalizacja'),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Anuluj'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    String locationQuery = locationController.text;
-                    filterEventsByQuery(context, events, locationQuery);
-                  },
-                  child: const Text('Szukaj'),
-                )
-              ]);
-        });
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Podaj wyszukiwaną lokalizację'),
+          content: TextField(
+            controller: locationController,
+            decoration: const InputDecoration(hintText: 'Lokalizacja'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Anuluj'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                String locationQuery = locationController.text;
+                filterEventsByQuery(context, events, locationQuery);
+              },
+              child: const Text('Szukaj'),
+            )
+          ]
+        );
+      }
+    );
   }
 
   static void showPriceFilterDialog(BuildContext context, List<Event> events) {
@@ -136,8 +105,7 @@ class EventFilterService {
               onPressed: () {
                 Navigator.pop(context);
                 double bottom = double.tryParse(bottomController.text) ?? 0.0;
-                double up =
-                    double.tryParse(upController.text) ?? double.infinity;
+                double up = double.tryParse(upController.text) ?? double.infinity;
                 filterEventsByPrice(context, events, bottom, up);
               },
               child: const Text('Filtruj'),
@@ -204,65 +172,7 @@ class EventFilterService {
     );
   }
 
-  static void showParticipantsFilterDialog(
-      BuildContext context, List<Event> events) {
-    TextEditingController minParticipantsController = TextEditingController();
-    TextEditingController maxParticipantsController = TextEditingController();
-
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: minParticipantsController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                      hintText: 'Minimalna liczba uczestników'),
-                ),
-                TextField(
-                  controller: maxParticipantsController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                      hintText: 'Maksymalna liczba uczestników'),
-                ),
-                Text(
-                  'Pozostaw polę puste, jeżeli bez ograniczeń.',
-                  style: TextStyle(
-                    color: HiveColors.weakAccent,
-                    fontStyle: FontStyle.italic,
-                  ),
-                )
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Anuluj'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  int minParticipants =
-                      int.tryParse(minParticipantsController.text) ?? 0;
-                  int maxParticipants =
-                      int.tryParse(maxParticipantsController.text) ?? -1;
-
-                  filterEventsByParticipants(context, events,
-                      maxParticipants: maxParticipants,
-                      minParticipants: minParticipants);
-                },
-                child: const Text('Filtruj'),
-              )
-            ],
-          );
-        });
-  }
-
-  static void _navigateToFilteredPage(
-      BuildContext context, List<Event> filteredEvents) {
+  static void _navigateToFilteredPage(BuildContext context, List<Event> filteredEvents) {
     if (filteredEvents.isEmpty) {
       _showErrorDialog(context, 'Nie znaleziono żadnych wydarzeń.');
       return;
@@ -299,7 +209,8 @@ class EventFilterService {
   static void showFilterModalBottomSheet({
     required BuildContext context,
     required List<Event> events,
-  }) {
+
+}) {
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -323,9 +234,9 @@ class EventFilterService {
                         builder: (BuildContext context) {
                           return EventTypeGrid(
                               onEventTypeSelected: (String typeFilter) {
-                            EventFilterService.filterEventsByType(
-                                context, events, typeFilter);
-                          });
+                                EventFilterService.filterEventsByType(
+                                    context, events, typeFilter);
+                              });
                         });
                   }),
               ListTile(
@@ -347,13 +258,6 @@ class EventFilterService {
                   onTap: () async {
                     Navigator.pop(context);
                     EventFilterService.showPriceFilterDialog(context, events);
-                  }),
-              ListTile(
-                  title: const Text('Liczba użytkowników'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    EventFilterService.showParticipantsFilterDialog(
-                        context, events);
                   })
             ],
           ),

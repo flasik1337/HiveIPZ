@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Hive</string>
     <string name="facebook_app_id">649744194488907</string>
+    <string name="facebook_client_token">179f555e62139c6da39cb894deec44e</string>
 </resources>
