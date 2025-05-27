@@ -50,18 +50,16 @@
 
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
-            android:value="@string/facebook_app_id"/>
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token"/>
 
-        <activity
-            android:name="com.facebook.FacebookActivity"
-            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
-            android:label="@string/app_name"
-            android:exported="true" />
+<!--        Ikona do powiadomień -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/notification"/>
 
-        <provider
-            android:name="com.facebook.FacebookContentProvider"
-            android:authorities="com.facebook.app.FacebookContentProvider{YOUR_FACEBOOK_APP_ID}"
-            android:exported="true" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -82,6 +80,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" /> <!-- Odczyt wideo -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" /> <!-- Odczyt multimediów -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/> <!-- Obsługa biometrii -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/> <!-- Obsługa powiadomień (nawet po restarcie urządzenia -->
 
 
 
