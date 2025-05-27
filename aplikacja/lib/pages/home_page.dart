@@ -2,8 +2,10 @@ import 'package:Hive/styles/hive_colors.dart';
 import 'package:Hive/widgets/event_type_grid.dart';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
+import '../main.dart';
 import '../models/event.dart';
 import '../services/event_sorter_service.dart';
+import '../services/local_notification_service.dart';
 import '../widgets/event_card.dart';
 import '../pages/filtered_page.dart';
 import '../pages/new_event_page.dart';
@@ -15,8 +17,6 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../pages/qr_scanner.dart';
-
-
 
 import '../widgets/sorting_modal_bottom_sheet.dart';
 
@@ -377,6 +377,20 @@ class _HomePageState extends State<HomePage> {
           ),
 
           Positioned(
+            top: 50,
+              child: ElevatedButton(
+            child: Text("Pokaż testowe powiadomienie"),
+            onPressed: () {
+              print("testowanie powiadomień");
+              LocalNotificationService().showImmediate(
+                title: "Test",
+                body: "To jest powiadomienie testowe",
+                payload: "dowolny_payload",
+              );
+            },
+          )),
+
+          Positioned(
               top: MediaQuery.of(context).size.height - 305,
               left: MediaQuery.of(context).size.width - 80,
               child: Row(
@@ -429,7 +443,7 @@ class _HomePageState extends State<HomePage> {
                               style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                              fontSize: 16),
+                                  fontSize: 16),
                             ),
                           ),
                         if (events.isNotEmpty)
@@ -458,7 +472,8 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.qr_code_scanner, size: 40, color:HiveColors.main),
+                    icon: const Icon(Icons.qr_code_scanner,
+                        size: 40, color: HiveColors.main),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -469,8 +484,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const Text(
                     'Skanuj kod QR',
-                    style: TextStyle(fontSize: 14, color:HiveColors.main),
-
+                    style: TextStyle(fontSize: 14, color: HiveColors.main),
                   ),
                 ],
               ),

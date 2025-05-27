@@ -1,86 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'database/database_helper.dart';
 import 'pages/sign_in.dart';
 import 'pages/home_page.dart';
-import 'pages/registration.dart';
-import 'pages/profile_page.dart';
-import 'pages/settings_page.dart';
-import 'pages/password_reset_page.dart';
-import 'pages/event_preferences_page.dart';
 import 'models/event.dart';
+import 'services/local_notification_service.dart';
 
-
-// Inicjalizacja listy eventów, na której działa cała aplikacja
-List<Event> initialEvents = [];
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+List<Event> initialEvents = [];
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inicjalizacja powiadomień lokalnych
+  await LocalNotificationService.initialize(flutterLocalNotificationsPlugin);
+  await LocalNotificationService().requestPermisions();
+
   final prefs = await SharedPreferences.getInstance();
   var token = prefs.getString('token');
-  print("Odczytany token: $token"); // Sprawdź, czy token jest zapisany
+  print("Odczytany token: $token");
+
   String? errorMessage;
+  Widget homeWidget = SignInPage(events: [],);
 
   if (token != null) {
     try {
       await DatabaseHelper.verifyToken(token);
+      homeWidget = HomePage(events: [],);
     } catch (e) {
       prefs.remove('token');
-      token = null;
-      errorMessage = 'Sesja wygasła, zaloguj się ponownie.';
     }
   }
 
-  runApp(MyApp(
-    initialRoute: token != null ? '/home' : '/sign_in',
-    errorMessage: errorMessage,
+  runApp(MaterialApp(
+    navigatorKey: navigatorKey,
+    home: homeWidget,
+    debugShowCheckedModeBanner: false,
   ));
-}
-
-class MyApp extends StatelessWidget {
-  final String initialRoute;
-  final String? errorMessage;
-
-  const MyApp({super.key, required this.initialRoute, this.errorMessage});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      debugShowCheckedModeBanner: false, // Wyłączenie debugowego banera
-      title: 'Hive',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-        splashFactory: NoSplash.splashFactory,
-      ),
-
-      initialRoute: initialRoute,
-      routes: {
-        '/sign_in': (context) => SignInPage(events: initialEvents, errorMessage: errorMessage),
-        '/register': (context) => RegisterPage(),
-        '/home': (context) => HomePage(events: initialEvents),
-        '/account': (context) => ProfilePage(),
-        '/settings': (context) => SettingsPage(),
-        '/change_password': (context) => PasswordResetPage(),
-        '/event_preferences': (context) {
-        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-        final userId = args?['userId'] as String?;
-
-        if (userId != null) {
-          return EventPreferencesPage(userId: userId);
-        } else {
-          return const Scaffold(
-            body: Center(child: Text('Błąd: Brak ID użytkownika')),
-          );
-        }
-      },
-
-
-      },
-    );
-  }
 }
