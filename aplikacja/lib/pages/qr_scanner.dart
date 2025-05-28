@@ -13,78 +13,68 @@ class QrScannerPage extends StatelessWidget {
     final code = rawCode.trim();
     print("Zeskanowany kod QR: $code");
 
-    // 1. Obsługa: ticket:<numer>
+    // 🎫 BILET
     if (code.startsWith('ticket:')) {
-      final ticketNumber = code.split(':')[1].trim();
-      if (ticketNumber.isNotEmpty) {
-        _showTicketDialog(ticketNumber, context);
+      final ticketId = code.split(':')[1].trim();
+      if (ticketId.isNotEmpty) {
+        _showTicketDialog(ticketId, context);
         return;
       }
     }
 
-    // 2. Obsługa pełnego URL z /ticket/<numer>
-    if (code.contains('/ticket/')) {
-      final regex = RegExp(r'/ticket/([^/?#]+)');
-      final match = regex.firstMatch(code);
-      if (match != null) {
-        final ticketNumber = match.group(1);
-        if (ticketNumber != null && ticketNumber.isNotEmpty) {
-          _showTicketDialog(ticketNumber, context);
-          return;
-        }
+    // 📍 WYDARZENIE - potwierdzenie obecności
+    if (code.contains("/events/") && code.contains("/checkin")) {
+      final uri = Uri.tryParse(code);
+      if (uri != null && uri.pathSegments.length >= 2) {
+        final eventId = uri.pathSegments[1]; // /events/<id>/checkin
+        await _checkInToEvent(eventId, context);
+        return;
       }
     }
 
-    // 3. Obsługa samego numeru (np. "TKT123456")
-    if (RegExp(r'^[A-Za-z0-9\-_]{6,}$').hasMatch(code)) {
-      _showTicketDialog(code, context);
+    // ❌ Nic nie pasuje
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Nieprawidłowy kod QR")),
+    );
+  }
+
+
+  Future<void> _checkInToEvent(String eventId, BuildContext context) async {
+    final token = await DatabaseHelper.getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Musisz być zalogowany, aby potwierdzić obecność")),
+      );
       return;
     }
 
-    // 4. Obsługa event_id
-    String? eventId;
-    if (code.contains('event_id=')) {
-      eventId = Uri.parse(code).queryParameters['event_id'];
-    } else if (RegExp(r'^\d+$').hasMatch(code)) {
-      eventId = code;
-    }
-
-    if (eventId != null) {
-      final token = await DatabaseHelper.getToken();
-      if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Nie jesteś zalogowany")),
-        );
-        return;
-      }
-
+    try {
       final response = await http.post(
-        Uri.parse("https://vps.jakosinski.pl/events/$eventId/checkin"),
+        Uri.parse("https://vps.jakosinski.pl:5000/events/$eventId/checkin"),
         headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
         },
       );
 
-      final result = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("✅ ${result['message']}")),
+          SnackBar(content: Text("✅ ${data['message'] ?? 'Obecność potwierdzona'}")),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ ${result['error'] ?? 'Błąd'}")),
+          SnackBar(content: Text("❌ ${data['error'] ?? 'Błąd potwierdzania'}")),
         );
       }
 
       Navigator.pop(context);
-      return;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Błąd sieci: $e")),
+      );
     }
-
-    // 5. Jeśli nic nie pasuje
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Nieprawidłowy kod QR")),
-    );
   }
 
 
