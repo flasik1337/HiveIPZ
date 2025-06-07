@@ -285,7 +285,7 @@ class _EventPageState extends State<EventPage> {
     }
   }
 
-  void _showDiscountDialog(
+   void _showDiscountDialog(
       BuildContext context, double price, bool canUsePromo) async {
     if (!canUsePromo) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -315,10 +315,10 @@ class _EventPageState extends State<EventPage> {
       },
     );
 
-    if (confirmed == true) {
+     if (confirmed == true) {
       Navigator.pop(context); // zamknij poprzedni bottomsheet
 
-      final paymentConfirmed = await showModalBottomSheet<bool>(
+      final paymentResult = await showModalBottomSheet<Map<String, dynamic>>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -326,11 +326,16 @@ class _EventPageState extends State<EventPage> {
           price: price,
           hasDiscount: true,
           onDiscountTap: () => _showDiscountDialog(context, price, canUsePromo),
+          hasDiscountTickets: currentEvent.hasDiscountTickets,
+          hasVipTickets: currentEvent.hasVipTickets,
         ),
       );
 
-      if (paymentConfirmed == true) {
-        await DatabaseHelper.joinEvent(currentEvent.id);
+      if (paymentResult != null && paymentResult['confirmed'] == true) {
+        final ticketType = paymentResult['ticketType'] ?? 'standard';
+        final finalPrice = paymentResult['finalPrice'] ?? price;
+        
+        await DatabaseHelper.joinEventWithTicketType(currentEvent.id, ticketType, finalPrice);
         if (!mounted) return;
         setState(() {
           isUserJoined = true;
@@ -520,28 +525,38 @@ class _EventPageState extends State<EventPage> {
         }
 
         // Obsługa płatności dla wydarzeń płatnych
-        if (currentEvent.cena > 0) {
+          if (currentEvent.cena > 0) {
           final hasPromo = await DatabaseHelper.hasPromotion(
               int.parse(userId!), 'promo_ticket');
           final canUsePromo = hasPromo && currentEvent.cena > 10;
 
-          final paymentConfirmed = await showModalBottomSheet<bool>(
+          final paymentResult = await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (context) => PaymentBottomSheet(
               price: currentEvent.cena,
-              hasDiscount: false, // <- na start false
+              hasDiscount: false,
               onDiscountTap: () =>
                   _showDiscountDialog(context, currentEvent.cena, canUsePromo),
+              hasDiscountTickets: currentEvent.hasDiscountTickets,
+              hasVipTickets: currentEvent.hasVipTickets,
             ),
           );
 
-          if (paymentConfirmed != true) return;
+          if (paymentResult == null || paymentResult['confirmed'] != true) return;
+
+          // Pobieramy typ biletu i cenę z rezultatu
+          final ticketType = paymentResult['ticketType'] ?? 'standard';
+          final finalPrice = paymentResult['finalPrice'] ?? currentEvent.cena;
+
+          // Zapisz użytkownika na wydarzenie z typem biletu
+          await DatabaseHelper.joinEventWithTicketType(currentEvent.id, ticketType, finalPrice);
+        } else {
+          // Dla darmowych wydarzeń nadal standardowy bilet
+          await DatabaseHelper.joinEvent(currentEvent.id);
         }
 
-        // Zapisz użytkownika na wydarzenie
-        await DatabaseHelper.joinEvent(currentEvent.id);
         if (!mounted) return;
         setState(() {
           isUserJoined = true;
@@ -828,10 +843,12 @@ class _EventPageState extends State<EventPage> {
                                       currentEvent.startDate.toIso8601String(),
                                   'max_participants': currentEvent.maxParticipants,
                                   'registered_participants':
-                                      currentEvent.registeredParticipants,
+                                      currentEvent.registeredParticipants,  
                                   'image': currentEvent.imagePath,
                                   'cena': currentEvent.cena,
                                   'is_promoted': updated.isPromoted,
+                                   'has_discount_tickets': currentEvent.hasDiscountTickets ?? false,
+                                  'has_vip_tickets': currentEvent.hasVipTickets ?? false,
                                 },
                               );
                               if (!mounted) return;
