@@ -11,6 +11,7 @@ class Ticket {
   final String userName;
   final String userSurname;
   final String nickName;
+  final String ticketType;
 
   Ticket({
     required this.ticketId,
@@ -25,6 +26,7 @@ class Ticket {
     required this.userName,
     required this.userSurname,
     required this.nickName,
+    this.ticketType = 'standard',
   });
 
   factory Ticket.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,18 @@ class Ticket {
       userName: json['user_name']?.toString() ?? '',
       userSurname: json['user_surname']?.toString() ?? '',
       nickName: json['nickName']?.toString() ?? '',
+      ticketType: json['ticket_type']?.toString() ?? 'standard',
     );
+  }
+  String getTicketTypeDisplayName() {
+    switch (ticketType) {
+      case 'vip':
+        return 'VIP';
+      case 'discount':
+        return 'Ulgowy';
+      case 'standard':
+      default:
+        return 'Standardowy';
+    }
   }
 }

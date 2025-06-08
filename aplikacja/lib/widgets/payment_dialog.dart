@@ -6,12 +6,16 @@ class PaymentBottomSheet extends StatefulWidget {
   final double price;
   final bool hasDiscount;
   final VoidCallback onDiscountTap;
+  final bool hasDiscountTickets;
+  final bool hasVipTickets;
 
   const PaymentBottomSheet({
     super.key,
     required this.price,
     required this.hasDiscount,
     required this.onDiscountTap,
+    this.hasDiscountTickets = false,
+    this.hasVipTickets = false,
   });
 
   @override
@@ -23,6 +27,7 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
   final _expiryDateController = TextEditingController();
   final _cvvController = TextEditingController();
   String? _cardNumberError;
+  String _selectedTicketType = 'standard';
 
   @override
   void initState() {
@@ -48,6 +53,35 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
       return false;
     }
     return true;
+  }
+
+  double _calculateFinalPrice() {
+  double basePrice = widget.price;
+  double discount = widget.hasDiscount && basePrice > 10 ? 10.0 : 0.0;
+  double priceAfterDiscount = basePrice - discount;
+  
+  switch (_selectedTicketType) {
+    case 'vip':
+      return priceAfterDiscount * 1.3; // +30%
+    case 'discount':
+      return priceAfterDiscount * 0.7; // -30%
+    case 'standard':
+    default:
+      return priceAfterDiscount;
+  }
+}
+
+  // NOWA metoda do uzyskania nazwy typu biletu
+  String _getTicketTypeName(String type) {
+    switch (type) {
+      case 'vip':
+        return 'VIP (+30%)';
+      case 'discount':
+        return 'Ulgowy (-30%)';
+      case 'standard':
+      default:
+        return 'Standardowy';
+    }
   }
 
   void _showDiscountDialog(
@@ -101,7 +135,7 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final discount = widget.hasDiscount && widget.price > 10 ? 10.0 : 0.0;
-    final finalPrice = (widget.price - discount).clamp(0, double.infinity);
+    final finalPrice = _calculateFinalPrice();
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
@@ -185,6 +219,60 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
 
                   const SizedBox(height: 32),
 
+                  if (widget.hasDiscountTickets || widget.hasVipTickets) ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Typ biletu',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          RadioListTile<String>(
+                            title: Text(_getTicketTypeName('standard')),
+                            value: 'standard',
+                            groupValue: _selectedTicketType,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedTicketType = value!;
+                              });
+                            },
+                          ),
+                          if (widget.hasDiscountTickets)
+                            RadioListTile<String>(
+                              title: Text(_getTicketTypeName('discount')),
+                              value: 'discount',
+                              groupValue: _selectedTicketType,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedTicketType = value!;
+                                });
+                              },
+                            ),
+                          if (widget.hasVipTickets)
+                            RadioListTile<String>(
+                              title: Text(_getTicketTypeName('vip')),
+                              value: 'vip',
+                              groupValue: _selectedTicketType,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedTicketType = value!;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // DODAJ PROMOCJĘ
                   GestureDetector(
                     onTap: widget.onDiscountTap,
@@ -220,6 +308,14 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
 
                   _summaryRow(
                       'Cena biletu', '${widget.price.toStringAsFixed(2)}zł'),
+                   if (_selectedTicketType == 'vip')
+                    _summaryRow(
+                        'Dopłata VIP (+30%)', '+${(widget.price * 0.3).toStringAsFixed(2)}zł',
+                        color: Colors.orange),
+                  if (_selectedTicketType == 'discount')
+                    _summaryRow(
+                        'Zniżka ulgowa (-30%)', '-${(widget.price * 0.3).toStringAsFixed(2)}zł',
+                        color: Colors.green),
                   if (discount > 0)
                     _summaryRow(
                         'Promocja %', '-${discount.toStringAsFixed(2)}zł',
@@ -227,8 +323,8 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
 
                   const Divider(height: 32),
 
-                  _summaryRow('Suma', '${finalPrice.toStringAsFixed(2)}zł',
-                      bold: true),
+                  _summaryRow('Suma', '${_calculateFinalPrice().toStringAsFixed(2)}zł', bold: true),  
+                    
                 ],
               ),
             ),
@@ -249,7 +345,11 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
                       'expiryDate', _expiryDateController.text);
                   await prefs.setString('cvv', _cvvController.text);
 
-                  Navigator.pop(context, true);
+                  Navigator.pop(context, {
+                    'confirmed': true,
+                    'ticketType': _selectedTicketType,
+                    'finalPrice': _calculateFinalPrice(), 
+                  });
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -268,7 +368,7 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
           const SizedBox(height: 8),
           Center(
             child: TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(context, {'confirmed': false}),
               child: const Text('Anuluj'),
             ),
           ),
