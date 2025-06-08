@@ -10,6 +10,7 @@ class Event {
   final String description;
   final String type;
   final DateTime startDate;
+  final DateTime updatedAt;
   final int maxParticipants;
   final int registeredParticipants;
   final String imagePath;
@@ -26,6 +27,7 @@ class Event {
     required this.description,
     required this.type,
     required this.startDate,
+    required this.updatedAt,
     required this.maxParticipants,
     required this.registeredParticipants,
     required this.imagePath,
@@ -44,6 +46,7 @@ class Event {
       description: json['description']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       startDate: _parseDateTime(json['start_date']),
+      updatedAt: _parseDateTime(json['updated_at']),
       maxParticipants: _parseIntSafely(json['max_participants']) ?? 0,
       registeredParticipants: _parseIntSafely(json['registered_participants']) ?? 0,
       imagePath: json['image']?.toString() ?? '',
@@ -86,6 +89,7 @@ class Event {
     String? description,
     String? type,
     DateTime? startDate,
+    DateTime? updatedAt,
     int? maxParticipants,
     int? registeredParticipants,
     String? imagePath,
@@ -102,6 +106,7 @@ class Event {
       description: description ?? this.location,
       type: type ?? this.type,
       startDate: startDate ?? this.startDate,
+      updatedAt: updatedAt ?? this.updatedAt,
       maxParticipants: maxParticipants ?? this.maxParticipants,
       registeredParticipants:
           registeredParticipants ?? this.registeredParticipants,

@@ -194,6 +194,7 @@ class _EditEventPageState extends State<EditEventPage> {
       description: description,
       type: type,
       startDate: date,
+      updatedAt: DateTime.now(),
       maxParticipants: maxParticipants,
       registeredParticipants: widget.event.registeredParticipants,
       imagePath: widget.event.imagePath,
@@ -215,6 +216,7 @@ class _EditEventPageState extends State<EditEventPage> {
         'registered_participants': widget.event.registeredParticipants,
         'image': widget.event.imagePath,
         'cena': cena,
+        'is_promoted': widget.event.isPromoted,
       };
       await DatabaseHelper.updateEvent(widget.event.id, eventData);
       ScaffoldMessenger.of(context).showSnackBar(

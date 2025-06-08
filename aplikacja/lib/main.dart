@@ -1,3 +1,4 @@
+import 'package:Hive/services/polling_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -21,7 +22,12 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   var token = prefs.getString('token');
-  print("Odczytany token: $token");
+  if (token != null) {
+    final polling = PollingService(
+        interval: Duration(seconds: 30),
+    );
+    polling.start();
+  }
 
   String? errorMessage;
   Widget homeWidget = SignInPage(events: [],);

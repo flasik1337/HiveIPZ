@@ -381,7 +381,6 @@ class _HomePageState extends State<HomePage> {
               child: ElevatedButton(
             child: Text("Pokaż testowe powiadomienie"),
             onPressed: () {
-              print("testowanie powiadomień");
               LocalNotificationService().showImmediate(
                 title: "Test",
                 body: "To jest powiadomienie testowe",

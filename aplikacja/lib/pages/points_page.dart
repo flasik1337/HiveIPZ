@@ -52,6 +52,7 @@ class _PointsPageState extends State<PointsPage> {
               description: eventMap['description'],
               type: eventMap['type'],
               startDate: DateTime.parse(eventMap['start_date']),
+              updatedAt: DateTime.parse(eventMap['updated_at']),
               maxParticipants: eventMap['max_participants'],
               registeredParticipants: eventMap['registered_participants'],
               imagePath: eventMap['image'],
