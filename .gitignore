@@ -10,3 +10,5 @@ serwer/SerwerJVM/pom.xml
 serwer/Serwer2.0/instance/.env
 .idea/workspace-HP_Kuba.xml
 serwer/venv/lib64
+aplikacja/lib/pages/event_page_moj.dart
+serwer/.idea/workspace.xml

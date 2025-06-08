@@ -166,19 +166,19 @@ class DatabaseHelper {
   }
 
   // Dodawanie wydarzeń
-  static Future<void> addEvent(Map<String, dynamic> eventData) async {
-    final url = Uri.parse('$link/events');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(eventData),
-    );
-    if (response.statusCode == 201) {
-      print('Wydarzenie dodane pomyślnie');
-    } else {
-      throw Exception(jsonDecode(response.body)['error']);
-    }
+ static Future<void> addEvent(Map<String, dynamic> eventData) async {
+  final url = Uri.parse('$link/events');
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(eventData),
+  );
+  if (response.statusCode == 201) {
+    print('Wydarzenie dodane pomyślnie');
+  } else {
+    throw Exception(jsonDecode(response.body)['error']);
   }
+}
 
   // Aktualizowanie wydarzeń
   static Future<void> updateEvent(
@@ -863,6 +863,79 @@ class DatabaseHelper {
       return data['is_banned'] == true;
     } else {
       throw Exception('Błąd podczas sprawdzania statusu bana');
+    }
+  }
+  
+  static Future<void> joinEventWithTicketType(String eventId, String ticketType, double finalPrice) async {
+  final token = await getToken();
+  if (token == null) {
+    throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+  }
+
+  final url = Uri.parse('$link/events/$eventId/join_with_ticket_type');
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+    body: jsonEncode({
+      'ticket_type': ticketType,
+      'final_price': finalPrice,
+    }),
+  );
+
+  if (response.statusCode != 200) {
+    final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+    throw Exception('Błąd przy zapisie na wydarzenie: $error');
+  }  }
+  // Pobieranie wiadomości czatu dla wydarzenia
+  static Future<List<Map<String, dynamic>>> getEventChatMessages(
+    String eventId, {
+    DateTime? since,
+  }) async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/chat');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Błąd podczas pobierania wiadomości: ${response.body}');
+    }
+  }
+
+  // Wysyłanie wiadomości do czatu wydarzenia
+  static Future<void> sendChatMessage(String eventId, String message) async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
+
+    final url = Uri.parse('$link/events/$eventId/chat');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'message': message}),
+    );
+
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd podczas wysyłania wiadomości: $error');
     }
   }
 

@@ -27,6 +27,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final ImagePicker _picker = ImagePicker();
   int? userId;
   final TextEditingController _cenaController = TextEditingController();
+  bool _hasDiscountTickets = false;
+  bool _hasVipTickets = false;
 
   @override
   void initState() {
@@ -70,6 +72,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
           'image': _imagePath ?? 'assets/placeholder.jpg',
           'user_id': userId,
           'cena': _cenaController.text.isEmpty ? 0.0 : double.parse(_cenaController.text),
+          'has_discount_tickets': _hasDiscountTickets,
+          'has_vip_tickets': _hasVipTickets,
         };
 
         // zapisujemy dane do bazy
@@ -85,9 +89,13 @@ class _CreateEventPageState extends State<CreateEventPage> {
         _nameController.clear();
         _locationController.clear();
         _maxParticipantsController.clear();
+        _cenaController.clear();
+        _descriptionController.clear();
         setState(() {
           _imagePath = 'assets/placeholder.jpg'; // resetujemy zdjęcie
           _selectedEventType = null; // resetujemy typ wydarzenia
+          _hasDiscountTickets = false;
+          _hasVipTickets = false;
         });
       } catch (e) {
         print("Error przy dodawaniu wydarzenia: $e");
@@ -177,6 +185,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: formKey,
+          child: SingleChildScrollView(
           child: Column(
             children: [
               GestureDetector(
@@ -234,6 +243,32 @@ class _CreateEventPageState extends State<CreateEventPage> {
                   return null;
                 },
               ),
+                 const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Rodzaje biletów:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                CheckboxListTile(
+                  title: const Text('Bilety ulgowe (-30%)'),
+                  value: _hasDiscountTickets,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _hasDiscountTickets = value ?? false;
+                    });
+                  },
+                ),
+                CheckboxListTile(
+                  title: const Text('Bilety VIP (+30%)'),
+                  value: _hasVipTickets,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _hasVipTickets = value ?? false;
+                    });
+                  },
+                ),
               // Tutaj submit button, jeżeli dojdą jakieś cechy do Eventu to tylko nad tym
               const SizedBox(height: 10),
               ElevatedButton(
@@ -259,6 +294,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

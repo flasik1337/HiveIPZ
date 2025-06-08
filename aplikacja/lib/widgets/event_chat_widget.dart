@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert'; // For jsonEncode and jsonDecode
+import 'dart:async';
+import '../database/database_helper.dart';
+import '../models/chat_message.dart';
 
 class EventChatWidget extends StatefulWidget {
   final String eventId;
-  final int userId; // Zakładając, że masz sposób na uzyskanie ID bieżącego użytkownika
+  final int userId;
 
   const EventChatWidget({Key? key, required this.eventId, required this.userId}) : super(key: key);
 
@@ -15,106 +15,91 @@ class EventChatWidget extends StatefulWidget {
 
 class _EventChatWidgetState extends State<EventChatWidget> {
   final TextEditingController _controller = TextEditingController();
-  WebSocketChannel? _channel;
-  List<Map<String, dynamic>> _messages = []; // Przechowuje wiadomości wraz z informacjami o użytkowniku
+  List<ChatMessage> _messages = [];
   bool _isLoading = true;
   String? _errorMessage;
+  DateTime? _lastMessageTimestamp;
+  Timer? _pollingTimer;
+  static const int pollInterval = 3000; // 3 sekundy
 
   @override
   void initState() {
     super.initState();
-    _connectToChat();
+    _initChat();
   }
 
-  Future<void> _connectToChat() async {
+  Future<void> _initChat() async {
     try {
-      // Zmiana protokołu z https na wss i upewnienie się, że ścieżka jest poprawna
-      final uri = Uri.parse('wss://vps.jakosinski.pl:5000/chat?userId=${widget.userId}&eventId=${widget.eventId}');
-      print('Próba połączenia WebSocket: $uri');
-      
-      _channel = WebSocketChannel.connect(uri);
-
-      _channel!.stream.listen(
-        (message) {
-          if (mounted) {
-            setState(() {
-              try {
-                final decodedMessage = jsonDecode(message);
-
-                if (decodedMessage is Map<String, dynamic> && decodedMessage.containsKey('type')) {
-                  if (decodedMessage['type'] == 'history') {
-                    // Obsługa historii wiadomości
-                    if (decodedMessage['data'] is List) {
-                      _messages = List<Map<String, dynamic>>.from(decodedMessage['data']);
-                    }
-                  } else if (decodedMessage['type'] == 'new_message') {
-                    // Obsługa nowej wiadomości
-                     if (decodedMessage['data'] is Map<String, dynamic>) {
-                       _messages.add(decodedMessage['data']);
-                     }
-                  }
-                } else if (decodedMessage is Map<String, dynamic> && // Starsza obsługa, może być potrzebna dla niektórych serwerów
-                    decodedMessage.containsKey('user_id') &&
-                    decodedMessage.containsKey('content')) {
-                  _messages.add(decodedMessage);
-                }
-              } catch (e) {
-                print('Błąd dekodowania wiadomości: $e');
-                // Obsługa wiadomości niebędących JSON-em lub dodanie ogólnego wyświetlania
-                 _messages.add({'user_id': 0, 'nickname': 'System', 'content': message, 'is_system': true});
-              }
-            });
-          }
-        },
-        onError: (error) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = 'Błąd połączenia z czatem: $error';
-              _isLoading = false;
-            });
-            print('Błąd WebSocket: $error');
-          }
-        },
-        onDone: () {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              // Opcjonalnie, możesz spróbować połączyć się ponownie tutaj lub poinformować użytkownika.
-              print('Połączenie WebSocket zostało zamknięte.');
-            });
-          }
-        },
-      );
+      await _fetchMessages();
+      _startPolling();
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Nie udało się połączyć z WebSocket: $e';
-          _isLoading = false;
-        });
-      }
-      print('Błąd podczas ustanawiania połączenia WebSocket: $e');
+      setState(() {
+        _errorMessage = 'Nie udało się załadować czatu: $e';
+        _isLoading = false;
+      });
     }
   }
 
-  void _sendMessage() {
-    if (_controller.text.isNotEmpty && _channel != null) {
-      final messageData = {
-        'event_id': widget.eventId,
-        'user_id': widget.userId,
-        'content': _controller.text,
-      };
-      // Serwer oczekuje zdarzenia 'send_message' z danymi w formacie JSON
-      _channel!.sink.add(jsonEncode({'event': 'send_message', 'data': messageData}));
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(
+      Duration(milliseconds: pollInterval),
+      (_) => _fetchMessages(),
+    );
+  }
+
+  Future<void> _fetchMessages() async {
+    try {
+      final messagesData = await DatabaseHelper.getEventChatMessages(
+        widget.eventId,
+        since: _lastMessageTimestamp,
+      );
+
+      if (messagesData.isEmpty) return;
+
+      final newMessages = messagesData
+          .map((data) => ChatMessage.fromJson(data))
+          .toList();
+
+      if (newMessages.isNotEmpty) {
+        setState(() {
+          if (_lastMessageTimestamp == null) {
+            _messages = newMessages;
+          } else {
+            final existingIds = _messages.map((m) => m.id).toSet();
+            final uniqueNewMessages = newMessages.where((m) => !existingIds.contains(m.id)).toList();
+            _messages.addAll(uniqueNewMessages);
+          }
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _lastMessageTimestamp = _messages.last.timestamp;
+        });
+      }
+    } catch (e) {
+      print('Błąd podczas pobierania wiadomości: $e');
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_controller.text.isEmpty) return;
+
+    try {
+      await DatabaseHelper.sendChatMessage(widget.eventId, _controller.text);
       _controller.clear();
+      await _fetchMessages(); // Natychmiastowe odświeżenie po wysłaniu
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się wysłać wiadomości: $e')),
+      );
     }
   }
 
   @override
   void dispose() {
-    _channel?.sink.close();
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
     _controller.dispose();
     super.dispose();
   }
@@ -135,18 +120,7 @@ class _EventChatWidgetState extends State<EventChatWidget> {
             itemCount: _messages.length,
             itemBuilder: (context, index) {
               final message = _messages[index];
-              final bool isMe = message['user_id'] == widget.userId;
-              final bool isSystem = message['is_system'] ?? false;
-              final String nickname = message['nickname'] ?? 'Użytkownik ${message['user_id']}';
-
-              if (isSystem) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(message['content'], style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-                  ),
-                );
-              }
+              final bool isMe = message.userId == widget.userId.toString();
 
               return Align(
                 alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -161,12 +135,15 @@ class _EventChatWidgetState extends State<EventChatWidget> {
                     crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
                       Text(
-                        nickname,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54),
+                        message.nickname,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
-                        message['content'] ?? 'Nieprawidłowy format wiadomości', // Obsługa przypadków, gdy treść może być null
+                        message.text,
                         style: TextStyle(color: Colors.black87),
                       ),
                     ],
@@ -176,7 +153,18 @@ class _EventChatWidgetState extends State<EventChatWidget> {
             },
           ),
         ),
-        Padding(
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: Offset(0, -1),
+              ),
+            ],
+          ),
           padding: const EdgeInsets.all(8.0),
           child: Row(
             children: <Widget>[
@@ -191,6 +179,7 @@ class _EventChatWidgetState extends State<EventChatWidget> {
                     ),
                     filled: true,
                     fillColor: Colors.grey[200],
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   onSubmitted: (text) => _sendMessage(),
                 ),
@@ -210,7 +199,12 @@ class _EventChatWidgetState extends State<EventChatWidget> {
 
 // Funkcja pomocnicza do pobierania ID użytkownika (zastąp rzeczywistą implementacją)
 Future<int?> getCurrentUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getInt('userId'); // Zakładając, że 'userId' jest przechowywane w SharedPreferences
+  try {
+    final userIdString = await DatabaseHelper.getUserIdFromToken();
+    return int.tryParse(userIdString);
+  } catch (e) {
+    print('Błąd podczas pobierania userId: $e');
+    return null;
+  }
 }
 
