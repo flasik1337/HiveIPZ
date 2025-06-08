@@ -210,7 +210,7 @@ class DatabaseHelper {
 
   // Pobieranie wydarzenia
   static Future<Map<String, dynamic>?> getEvent(String id) async {
-    final url = Uri.parse('$link/events/$id');
+    final url = Uri.parse('$link/event_info/$id');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {

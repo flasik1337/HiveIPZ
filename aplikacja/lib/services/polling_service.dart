@@ -15,6 +15,7 @@ class PollingService {
 
   // 1) Do wykrywania, które eventy są już „znane”
   Set<String> _knownEventIds = {};
+  int knownEventsTotal = 0;
 
   // 2) Do wykrywania zmian dla danego eventu – mapowanie <eventId, updatedAt>
   final Map<String, DateTime> _eventTimestamps = {};
@@ -93,16 +94,11 @@ class PollingService {
 
     // 2) Edycje istniejących
     for (var id in currentIds) {
-      final jsonMap = await DatabaseHelper.getEvent(id);
-      if (jsonMap == null) {
-        print("Event $id jest nullem");
-        continue;
-      }
-      final Event event = Event.fromJson(jsonMap);
+      final event = await _fetchEvent(id);
       final lastTs = _eventTimestamps[id] ?? DateTime.fromMillisecondsSinceEpoch(0);
       print("DEBUG: ostatnia znana data zmiany: ${lastTs}");
-      print("DEBUG: nowa znana data zmiany: ${event.updatedAt}");
-      if (event.updatedAt.isAfter(lastTs)) {
+      print("DEBUG: nowa znana data zmiany: ${event?.updatedAt}");
+      if (event!.updatedAt.isAfter(lastTs)) {
         await _notifService.showImmediate(
           title: 'Wydarzenie zmienione',
           body: '${event.name}',
@@ -116,34 +112,17 @@ class PollingService {
     _knownEventIds = currentIds;
   }
 
-  /// Pomocnicza funkcja: pobiera z backendu pełne dane dla pojedynczego eventu
-  Future<Event?> _fetchEvent(String eventId) async {
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId');
-    final resp = await http.get(url);
-    if (resp.statusCode != 200) {
-      throw Exception('Nie można pobrać eventu $eventId (kod ${resp.statusCode})');
+  Future<Event?> _fetchEvent(String id) async {
+    try {
+      final eventData = await DatabaseHelper.getEvent(id);
+      print("DEBUG: ${eventData.toString()}");
+      if (eventData != null) {
+          final event = Event.fromJson(eventData);
+          return event;
+      } else return null;
+    } catch (e) {
+      print('Błąd podczas pobierania wydarzenia: $e');
     }
-
-    final decoded = jsonDecode(resp.body);
-    late Map<String, dynamic> jsonMap;
-
-    if (decoded is List) {
-      if (decoded.isEmpty) {
-        return null; // Brak eventu, zwracamy null
-      }
-      if (decoded[0] is Map<String, dynamic>) {
-        jsonMap = decoded[0] as Map<String, dynamic>;
-      } else {
-        throw Exception(
-            'Oczekiwano mapy w pierwszym elemencie listy, otrzymano: ${decoded[0].runtimeType}'
-        );
-      }
-    } else if (decoded is Map<String, dynamic>) {
-      jsonMap = decoded;
-    } else {
-      throw Exception('Nieoczekiwany format JSON: ${decoded.runtimeType}');
-    }
-
-    return Event.fromJson(jsonMap);
+    return null;
   }
 }
