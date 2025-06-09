@@ -377,19 +377,6 @@ class _HomePageState extends State<HomePage> {
           ),
 
           Positioned(
-            top: 50,
-              child: ElevatedButton(
-            child: Text("Pokaż testowe powiadomienie"),
-            onPressed: () {
-              LocalNotificationService().showImmediate(
-                title: "Test",
-                body: "To jest powiadomienie testowe",
-                payload: "dowolny_payload",
-              );
-            },
-          )),
-
-          Positioned(
               top: MediaQuery.of(context).size.height - 305,
               left: MediaQuery.of(context).size.width - 80,
               child: Row(
