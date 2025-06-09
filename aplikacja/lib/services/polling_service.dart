@@ -15,6 +15,7 @@ class PollingService {
 
   // 1) Do wykrywania, które eventy są już „znane”
   Set<String> _knownEventIds = {};
+  Set<String> _knownTotalIds = {};
   int knownEventsTotal = 0;
 
   // 2) Do wykrywania zmian dla danego eventu – mapowanie <eventId, updatedAt>
@@ -25,9 +26,10 @@ class PollingService {
   }) : _notifService = LocalNotificationService();
 
   /// Uruchamia cykliczne sprawdzanie co [interval]
-  void start() {
+  Future<void> start() async {
+    await _fetchUserData();
     // natychmiastowe pierwsze wywołanie, by ustawić stan początkowy
-    _checkAndUpdate(initial: true);
+    await _checkAndUpdate(initial: true);
     // a potem co [interval] sekund
     _timer = Timer.periodic(interval, (_) => _checkAndUpdate());
   }
@@ -57,7 +59,8 @@ class PollingService {
 
   /// Główna logika sprawdzająca nowe zapisania i edycje.
   Future<void> _checkAndUpdate({bool initial = false}) async {
-    final url = Uri.parse('https://vps.jakosinski.pl:5000/users/$userId/events');
+    final url = Uri.parse(
+        'https://vps.jakosinski.pl:5000/users/$userId/events');
     final resp = await http.get(url);
     if (resp.statusCode != 200) return;
 
@@ -65,15 +68,19 @@ class PollingService {
     final List<dynamic> events = data['events'] ?? [];
     final currentIds = events.cast<String>().toSet();
 
+    final totalEventsData = await DatabaseHelper.getEventsCountAndIds();
+    final List<dynamic> allEvents = totalEventsData['ids'] ?? [];
+    final allIds = allEvents.cast<String>().toSet();
+
     if (initial) {
-      _fetchUserData();
       // Ustawiamy stan początkowy bez powiadomień
       _knownEventIds = currentIds;
+      _knownTotalIds = allIds;
+
       for (var id in currentIds) {
         final event = await _fetchEvent(id);
         if (event != null) {
           _eventTimestamps[id] = event.updatedAt;
-          print("DBUG: pieerwotny czas zmiany ventu: ${event.updatedAt}");
         }
       }
       return;
@@ -95,9 +102,8 @@ class PollingService {
     // 2) Edycje istniejących
     for (var id in currentIds) {
       final event = await _fetchEvent(id);
-      final lastTs = _eventTimestamps[id] ?? DateTime.fromMillisecondsSinceEpoch(0);
-      print("DEBUG: ostatnia znana data zmiany: ${lastTs}");
-      print("DEBUG: nowa znana data zmiany: ${event?.updatedAt}");
+      final lastTs = _eventTimestamps[id] ??
+          DateTime.fromMillisecondsSinceEpoch(0);
       if (event!.updatedAt.isAfter(lastTs)) {
         await _notifService.showImmediate(
           title: 'Wydarzenie zmienione',
@@ -108,18 +114,36 @@ class PollingService {
       }
     }
 
-    // Aktualizujemy zbiór ID
+    // 3) nowe wydarzenia w tabeli events
+    final newEventsIds = allIds.difference(_knownTotalIds);
+    print("Nowe wydarzenia: $newEventsIds");
+    for (var id in newEventsIds) {
+      final ev = await _fetchEvent(id);
+      if (ev == null) continue;
+      await _notifService.showImmediate(
+        title: 'Nowe wydarzenie',
+        body: 'Nowe wydarzenie, które może Cię zainteresować!',
+        payload: id,
+      );
+      // opcjonalnie też od razu zainicjalizuj timestamp
+      if (!_eventTimestamps.containsKey(id) && ev != null) {
+        _eventTimestamps[id] = ev.updatedAt;
+      }
+    }
+
+    // **aktualizujemy zbiory na przyszłość**
     _knownEventIds = currentIds;
+    _knownTotalIds = allIds;
   }
 
   Future<Event?> _fetchEvent(String id) async {
     try {
       final eventData = await DatabaseHelper.getEvent(id);
-      print("DEBUG: ${eventData.toString()}");
       if (eventData != null) {
-          final event = Event.fromJson(eventData);
-          return event;
-      } else return null;
+        final event = Event.fromJson(eventData);
+        return event;
+      } else
+        return null;
     } catch (e) {
       print('Błąd podczas pobierania wydarzenia: $e');
     }
