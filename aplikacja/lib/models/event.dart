@@ -19,6 +19,8 @@ class Event {
   final bool isPromoted;
   final double recommendationScore;
   final int userScore;
+  final bool hasDiscountTickets;
+  final bool hasVipTickets;
 
   const Event({
     required this.id,
@@ -36,6 +38,8 @@ class Event {
     required this.isPromoted,
     this.recommendationScore = 0.0,
     this.userScore = 0,
+    this.hasDiscountTickets = false,
+    this.hasVipTickets = false,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -54,6 +58,8 @@ class Event {
       cena: _parseDoubleSafely(json['cena']) ?? 0.0,
       isPromoted: json['is_promoted'] == 1 || json['is_promoted'] == true,
       userScore: _parseIntSafely(json['score']) ?? 0,
+      hasDiscountTickets: json['has_discount_tickets'] == 1 || json['has_discount_tickets'] == true,
+      hasVipTickets: json['has_vip_tickets'] == 1 || json['has_vip_tickets'] == true,
     );
   }
 
@@ -98,6 +104,8 @@ class Event {
     bool? isPromoted,
     double? recommendationScore,
     int? userScore,
+    bool? hasDiscountTickets,
+    bool? hasVipTickets,
   }) {
     return Event(
       id: id ?? this.id,
@@ -116,6 +124,8 @@ class Event {
       isPromoted: isPromoted ?? this.isPromoted,
       recommendationScore: recommendationScore ?? this.recommendationScore,
       userScore: userScore ?? this.userScore,
+      hasDiscountTickets: hasDiscountTickets ?? this.hasDiscountTickets,
+      hasVipTickets: hasVipTickets ?? this.hasVipTickets,
     );
   }
 

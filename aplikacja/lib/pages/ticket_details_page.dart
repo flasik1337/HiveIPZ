@@ -85,6 +85,7 @@ class TicketDetailsPage extends StatelessWidget {
               
               // Ticket details
               _buildInfoSection('INFORMACJE O BILECIE'),
+              _buildDetailRow('Typ biletu', ticket.getTicketTypeDisplayName()),
               _buildDetailRow('Status', ticket.status),
               _buildDetailRow('Cena', ticket.price > 0 ? '${ticket.price} zł' : 'Bezpłatny'),
               _buildDetailRow('Data zakupu', DateFormat('dd.MM.yyyy HH:mm').format(

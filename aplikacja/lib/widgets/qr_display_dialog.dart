@@ -8,7 +8,8 @@ class QrDisplayDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final qrData = eventId;
+    final qrData = "https://vps.jakosinski.pl/events/$eventId/checkin";
+
 
 
     return AlertDialog(
