@@ -939,4 +939,21 @@ class DatabaseHelper {
     }
   }
 
+
+  static Future<Map<String, dynamic>> getEventsCountAndIds() async {
+    final url = Uri.parse('$link/events/ids');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      // data['count'] to int, data['ids'] to List<dynamic>
+      return {
+        'count': data['count'] as int,
+        'ids': List<String>.from(data['ids'] as List)
+      };
+    } else {
+      final err = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+      throw Exception('Błąd pobierania wydarzeń: $err');
+    }
+  }
+
 }
