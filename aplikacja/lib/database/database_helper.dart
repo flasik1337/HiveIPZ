@@ -13,6 +13,7 @@ class DatabaseHelper {
     String nickName,
     String email,
     String password,
+      String? referralCode,
   ) async {
     final url = Uri.parse('$link/register');
     final response = await http.post(
@@ -25,6 +26,7 @@ class DatabaseHelper {
         'nickName': nickName,
         'email': email,
         'password': password,
+        'referral_code': referralCode,
       }),
     );
 
@@ -520,8 +522,19 @@ class DatabaseHelper {
 
     if (response.statusCode == 200) {
       try {
-        final data = jsonDecode(response.body) as List<dynamic>;
-        return data.cast<Map<String, dynamic>>();
+        final decodedBody = jsonDecode(response.body);
+        // Assuming the events are under an 'events' key
+        if (decodedBody is Map<String, dynamic> && decodedBody.containsKey('events')) {
+          final data = decodedBody['events'] as List<dynamic>;
+          return data.cast<Map<String, dynamic>>();
+        } else if (decodedBody is List<dynamic>) {
+          // This handles the case where it's a direct array (current implementation)
+          return decodedBody.cast<Map<String, dynamic>>();
+        }
+        else {
+          print('Nieoczekiwany format odpowiedzi dla wydarzeń');
+          return []; // Or throw an exception if this is an error
+        }
       } catch (e) {
         print('Błąd parsowania odpowiedzi JSON: $e');
         throw Exception('Błąd parsowania danych wydarzeń');
@@ -956,4 +969,140 @@ class DatabaseHelper {
     }
   }
 
+  static Future<void> addPoints({
+    required String userId,
+    required double amount,
+    String? reason, // Parametr 'reason' jest teraz opcjonalny
+  }) async {
+    final url = Uri.parse('$link/add_points');
+
+    // Tworzymy mapę z podstawowymi danymi
+    final Map<String, dynamic> body = {
+      'user_id': userId,
+      'amount': amount,
+    };
+
+    // Jeśli 'reason' został podany i nie jest pusty, dodajemy go do ciała żądania
+    if (reason != null && reason.isNotEmpty) {
+      body['reason'] = reason;
+    }
+
+    // Wysłanie zapytania do serwera
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body), // Konwersja całej mapy `body` na JSON
+    );
+
+    if (response.statusCode == 200) {
+      print('Punkty dodane pomyślnie. Powód: $reason');
+    } else {
+      // Próba odczytania błędu z odpowiedzi serwera
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Wystąpił nieznany błąd serwera.');
+    }
+  }
+
+  static Future<void> updateUserReferralCode(
+      int userId, String referralCode) async {
+    final url = Uri.parse('$link/update_referral_code');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'referral_code': referralCode,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // Sukces
+      print('Referral code updated successfully for user $userId');
+    } else {
+      // Błąd
+      final error = jsonDecode(response.body)['error'] ?? 'Unknown error';
+      throw Exception('Failed to update referral code: $error');
+    }
+  }
+
+  static Future<String?> fetchUserReferralCode(int userId) async {
+    final url = Uri.parse('$link/user_referral_code/$userId');
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Sprawdź, czy klucz 'referral_code' istnieje i czy jego wartość nie jest null
+        if (data != null && data['referral_code'] != null) {
+          return data['referral_code'];
+        } else {
+          return null; // Użytkownik nie ma jeszcze kodu referencyjnego
+        }
+      } else if (response.statusCode == 404) {
+        print('User not found or no referral code for user $userId');
+        return null; // Użytkownik nie istnieje lub nie ma kodu
+      } else {
+        final error = jsonDecode(response.body)['error'] ?? 'Unknown error';
+        throw Exception('Failed to fetch referral code: $error');
+      }
+    } catch (e) {
+      print('Error during fetchUserReferralCode: $e');
+      throw Exception('Network error or server issue: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getPointsHistory(int userId) async {
+    final url = Uri.parse('$link/get_points_history');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return data;
+        } else {
+          // Obsługa błędu, jeśli serwer zwróci np. {"error": "..."}
+          throw Exception(data['error'] ?? 'Nieprawidłowy format odpowiedzi od serwera.');
+        }
+      } else {
+        // Obsługa błędów HTTP
+        throw Exception('Błąd serwera: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Obsługa błędów sieciowych lub parsowania JSON
+      throw Exception('Nie udało się załadować historii punktów: $e');
+    }
+  }
+
+  static Future<void> spendPoints({
+    required int userId,
+    required int pointsToSpend,
+    required String reason,
+  }) async {
+    final url = Uri.parse('$link/spend_points');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'points': pointsToSpend, // Wysyłamy jako dodatnią liczbę
+          'reason': reason,
+        }),
+      );
+
+      // Sprawdzamy, czy operacja na serwerze się powiodła
+      if (response.statusCode != 200) {
+        // Jeśli serwer zwrócił błąd, próbujemy odczytać wiadomość
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Wystąpił błąd podczas wydawania punktów.');
+      }
+    } catch (e) {
+      throw Exception('Nie udało się wydać punktów: $e');
+    }
+  }
 }
